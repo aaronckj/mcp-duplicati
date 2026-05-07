@@ -62,6 +62,28 @@ async def _request(method: str, path: str, **kwargs: Any) -> httpx.Response:
         return resp
 
 
+@mcp.tool()
+async def server_info() -> dict:
+    """Get Duplicati server version and current state."""
+    try:
+        resp = await _request("GET", "/api/v1/serverstate")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return {"error": str(e), "tool": "server_info", "detail": type(e).__name__}
+
+
+@mcp.tool()
+async def list_backups() -> dict:
+    """List all configured backup jobs with ID, name, last run, and next run."""
+    try:
+        resp = await _request("GET", "/api/v1/backups")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return {"error": str(e), "tool": "list_backups", "detail": type(e).__name__}
+
+
 def main() -> None:
     mcp.run()
 

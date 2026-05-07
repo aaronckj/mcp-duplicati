@@ -104,3 +104,95 @@ async def test_request_refreshes_token_on_401(monkeypatch):
     # Second call used the fresh token
     second_call_kwargs = mock_client.request.call_args_list[1]
     assert second_call_kwargs[1]["cookies"] == {"session-auth": "fresh_token"}
+
+
+# ---------------------------------------------------------------------------
+# Tool tests — helpers
+# ---------------------------------------------------------------------------
+
+def make_response(status: int, data) -> httpx.Response:
+    """Build a real httpx.Response with JSON body (no live HTTP needed)."""
+    import json
+    # Create a mock request to avoid "request instance has not been set" error
+    from unittest.mock import MagicMock
+    mock_req = MagicMock()
+    resp = httpx.Response(status, content=json.dumps(data).encode(), headers={"content-type": "application/json"})
+    resp._request = mock_req
+    return resp
+
+
+# ---------------------------------------------------------------------------
+# server_info
+# ---------------------------------------------------------------------------
+
+async def test_server_info_success(monkeypatch):
+    payload = {"ServerVersion": "2.0.8.1", "ProgramState": "Running", "Started": "2024-01-01T00:00:00"}
+
+    async def fake_request(method, path, **kw):
+        return make_response(200, payload)
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.server_info()
+
+    assert result["result"]["ServerVersion"] == "2.0.8.1"
+    assert result["result"]["ProgramState"] == "Running"
+
+
+async def test_server_info_error(monkeypatch):
+    async def fake_request(method, path, **kw):
+        raise httpx.ConnectError("Connection refused")
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.server_info()
+
+    assert "error" in result
+    assert result["tool"] == "server_info"
+
+
+# ---------------------------------------------------------------------------
+# list_backups
+# ---------------------------------------------------------------------------
+
+async def test_list_backups_success(monkeypatch):
+    payload = [
+        {
+            "Backup": {"ID": "1", "Name": "Home Documents", "TargetURL": "file:///backup/home"},
+            "Schedule": {"NextTime": "2024-01-02T02:00:00Z"},
+            "DisplayNames": {},
+        }
+    ]
+
+    async def fake_request(method, path, **kw):
+        return make_response(200, payload)
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.list_backups()
+
+    assert isinstance(result["result"], list)
+    assert result["result"][0]["Backup"]["Name"] == "Home Documents"
+
+
+async def test_list_backups_empty(monkeypatch):
+    async def fake_request(method, path, **kw):
+        return make_response(200, [])
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.list_backups()
+
+    assert result["result"] == []
+
+
+async def test_list_backups_error(monkeypatch):
+    async def fake_request(method, path, **kw):
+        raise httpx.TimeoutException("Timeout")
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.list_backups()
+
+    assert "error" in result
+    assert result["tool"] == "list_backups"
