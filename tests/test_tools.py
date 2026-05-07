@@ -318,3 +318,111 @@ async def test_progress_error(monkeypatch):
 
     assert "error" in result
     assert result["tool"] == "progress"
+
+
+# ---------------------------------------------------------------------------
+# list_versions
+# ---------------------------------------------------------------------------
+
+async def test_list_versions_success(monkeypatch):
+    payload = [
+        {"Version": 0, "Time": "2024-01-01T02:00:00Z", "FileCount": 1500},
+        {"Version": 1, "Time": "2024-01-02T02:00:00Z", "FileCount": 1502},
+    ]
+
+    async def fake_request(method, path, **kw):
+        assert path == "/api/v1/backup/1/filesets"
+        return make_response(200, payload)
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.list_versions("1")
+
+    assert isinstance(result["result"], list)
+    assert len(result["result"]) == 2
+    assert result["result"][0]["Version"] == 0
+
+
+async def test_list_versions_error(monkeypatch):
+    async def fake_request(method, path, **kw):
+        raise httpx.ConnectError("Connection refused")
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.list_versions("1")
+
+    assert "error" in result
+    assert result["tool"] == "list_versions"
+
+
+# ---------------------------------------------------------------------------
+# pause
+# ---------------------------------------------------------------------------
+
+async def test_pause_indefinite(monkeypatch):
+    async def fake_request(method, path, **kw):
+        assert method == "POST"
+        assert path == "/api/v1/serverstate/pause"
+        assert kw.get("params", {}) == {}
+        return make_response(200, {})
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.pause()
+
+    assert result["result"]["paused"] is True
+    assert result["result"]["duration"] is None
+
+
+async def test_pause_with_duration(monkeypatch):
+    async def fake_request(method, path, **kw):
+        assert kw.get("params", {}) == {"duration": "300"}
+        return make_response(200, {})
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.pause(duration=300)
+
+    assert result["result"]["paused"] is True
+    assert result["result"]["duration"] == 300
+
+
+async def test_pause_error(monkeypatch):
+    async def fake_request(method, path, **kw):
+        raise httpx.ConnectError("Connection refused")
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.pause()
+
+    assert "error" in result
+    assert result["tool"] == "pause"
+
+
+# ---------------------------------------------------------------------------
+# resume
+# ---------------------------------------------------------------------------
+
+async def test_resume_success(monkeypatch):
+    async def fake_request(method, path, **kw):
+        assert method == "POST"
+        assert path == "/api/v1/serverstate/resume"
+        return make_response(200, {})
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.resume()
+
+    assert result["result"]["resumed"] is True
+
+
+async def test_resume_error(monkeypatch):
+    async def fake_request(method, path, **kw):
+        raise httpx.ConnectError("Connection refused")
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.resume()
+
+    assert "error" in result
+    assert result["tool"] == "resume"

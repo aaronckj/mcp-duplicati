@@ -117,6 +117,42 @@ async def progress() -> dict:
         return {"error": str(e), "tool": "progress", "detail": type(e).__name__}
 
 
+@mcp.tool()
+async def list_versions(backup_id: str) -> dict:
+    """List available restore points (filesets) for a backup job."""
+    try:
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}/filesets")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return {"error": str(e), "tool": "list_versions", "detail": type(e).__name__}
+
+
+@mcp.tool()
+async def pause(duration: int | None = None) -> dict:
+    """Pause the Duplicati scheduler. duration: optional seconds to pause for."""
+    try:
+        params: dict = {}
+        if duration is not None:
+            params["duration"] = str(duration)
+        resp = await _request("POST", "/api/v1/serverstate/pause", params=params)
+        resp.raise_for_status()
+        return {"result": {"paused": True, "duration": duration}}
+    except Exception as e:
+        return {"error": str(e), "tool": "pause", "detail": type(e).__name__}
+
+
+@mcp.tool()
+async def resume() -> dict:
+    """Resume the Duplicati scheduler after a pause."""
+    try:
+        resp = await _request("POST", "/api/v1/serverstate/resume")
+        resp.raise_for_status()
+        return {"result": {"resumed": True}}
+    except Exception as e:
+        return {"error": str(e), "tool": "resume", "detail": type(e).__name__}
+
+
 def main() -> None:
     mcp.run()
 
