@@ -130,11 +130,13 @@ async def list_versions(backup_id: str) -> dict:
 
 @mcp.tool()
 async def pause(duration: int | None = None) -> dict:
-    """Pause the Duplicati scheduler. duration: optional seconds to pause for."""
+    """Pause the Duplicati scheduler. duration: optional seconds (converted to HH:MM:SS for Duplicati API)."""
     try:
         params: dict = {}
         if duration is not None:
-            params["duration"] = str(duration)
+            h, rem = divmod(int(duration), 3600)
+            m, s = divmod(rem, 60)
+            params["duration"] = f"{h:02d}:{m:02d}:{s:02d}"
         resp = await _request("POST", "/api/v1/serverstate/pause", params=params)
         resp.raise_for_status()
         return {"result": {"paused": True, "duration": duration}}

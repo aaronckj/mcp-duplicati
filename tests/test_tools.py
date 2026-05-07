@@ -376,7 +376,7 @@ async def test_pause_indefinite(monkeypatch):
 
 async def test_pause_with_duration(monkeypatch):
     async def fake_request(method, path, **kw):
-        assert kw.get("params", {}) == {"duration": "300"}
+        assert kw.get("params", {}) == {"duration": "00:05:00"}
         return make_response(200, {})
 
     import mcp_duplicati.server as srv
