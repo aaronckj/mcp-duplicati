@@ -196,3 +196,125 @@ async def test_list_backups_error(monkeypatch):
 
     assert "error" in result
     assert result["tool"] == "list_backups"
+
+
+# ---------------------------------------------------------------------------
+# backup_status
+# ---------------------------------------------------------------------------
+
+async def test_backup_status_success(monkeypatch):
+    payload = {
+        "Backup": {"ID": "1", "Name": "Home Documents", "LastBackupDate": "2024-01-01T02:00:00Z"},
+        "BackupStatistics": {"LastBackupDuration": "00:05:30", "TotalQuotaSpace": 10737418240},
+    }
+
+    async def fake_request(method, path, **kw):
+        assert path == "/api/v1/backup/1"
+        return make_response(200, payload)
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.backup_status("1")
+
+    assert result["result"]["Backup"]["ID"] == "1"
+
+
+async def test_backup_status_not_found(monkeypatch):
+    async def fake_request(method, path, **kw):
+        return make_response(404, {"Error": "Not found"})
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.backup_status("999")
+
+    assert "error" in result
+    assert result["tool"] == "backup_status"
+
+
+async def test_backup_status_error(monkeypatch):
+    async def fake_request(method, path, **kw):
+        raise httpx.ConnectError("Connection refused")
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.backup_status("1")
+
+    assert "error" in result
+    assert result["tool"] == "backup_status"
+
+
+# ---------------------------------------------------------------------------
+# run_backup
+# ---------------------------------------------------------------------------
+
+async def test_run_backup_success(monkeypatch):
+    async def fake_request(method, path, **kw):
+        assert method == "POST"
+        assert path == "/api/v1/backup/1/run"
+        return make_response(200, {})
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.run_backup("1")
+
+    assert result["result"]["triggered"] is True
+    assert result["result"]["backup_id"] == "1"
+
+
+async def test_run_backup_error(monkeypatch):
+    async def fake_request(method, path, **kw):
+        raise httpx.TimeoutException("Timeout")
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.run_backup("1")
+
+    assert "error" in result
+    assert result["tool"] == "run_backup"
+
+
+# ---------------------------------------------------------------------------
+# progress
+# ---------------------------------------------------------------------------
+
+async def test_progress_active(monkeypatch):
+    payload = {
+        "Phase": "Backup_ProcessingFiles",
+        "OverallProgress": 0.45,
+        "ProcessedFileCount": 1200,
+        "TotalFileCount": 2680,
+    }
+
+    async def fake_request(method, path, **kw):
+        assert path == "/api/v1/progressstate"
+        return make_response(200, payload)
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.progress()
+
+    assert result["result"]["Phase"] == "Backup_ProcessingFiles"
+    assert result["result"]["OverallProgress"] == 0.45
+
+
+async def test_progress_idle(monkeypatch):
+    async def fake_request(method, path, **kw):
+        return make_response(200, {"Phase": "Idle"})
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.progress()
+
+    assert result["result"]["Phase"] == "Idle"
+
+
+async def test_progress_error(monkeypatch):
+    async def fake_request(method, path, **kw):
+        raise httpx.ConnectError("Connection refused")
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.progress()
+
+    assert "error" in result
+    assert result["tool"] == "progress"

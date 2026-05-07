@@ -84,6 +84,39 @@ async def list_backups() -> dict:
         return {"error": str(e), "tool": "list_backups", "detail": type(e).__name__}
 
 
+@mcp.tool()
+async def backup_status(backup_id: str) -> dict:
+    """Get detailed status of a specific backup job."""
+    try:
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return {"error": str(e), "tool": "backup_status", "detail": type(e).__name__}
+
+
+@mcp.tool()
+async def run_backup(backup_id: str) -> dict:
+    """Trigger a backup job to run immediately."""
+    try:
+        resp = await _request("POST", f"/api/v1/backup/{backup_id}/run")
+        resp.raise_for_status()
+        return {"result": {"backup_id": backup_id, "triggered": True}}
+    except Exception as e:
+        return {"error": str(e), "tool": "run_backup", "detail": type(e).__name__}
+
+
+@mcp.tool()
+async def progress() -> dict:
+    """Get current progress of any active backup or restore operation."""
+    try:
+        resp = await _request("GET", "/api/v1/progressstate")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return {"error": str(e), "tool": "progress", "detail": type(e).__name__}
+
+
 def main() -> None:
     mcp.run()
 
