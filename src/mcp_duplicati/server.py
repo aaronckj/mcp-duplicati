@@ -10,6 +10,9 @@ from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("duplicati")
 
+_DEFAULT_HOST = "http://localhost:8200"
+_DEFAULT_TIMEOUT = 30.0
+
 _session_token: str | None = None
 
 
@@ -19,15 +22,17 @@ async def _login() -> str:
     password = os.environ.get("DUPLICATI_PASSWORD")
     if not password:
         raise ValueError("DUPLICATI_PASSWORD environment variable is required")
-    host = os.environ.get("DUPLICATI_HOST", "http://localhost:8200")
-    timeout = float(os.environ.get("DUPLICATI_TIMEOUT", "30"))
+    host = os.environ.get("DUPLICATI_HOST", _DEFAULT_HOST)
+    timeout = float(os.environ.get("DUPLICATI_TIMEOUT", str(_DEFAULT_TIMEOUT)))
     async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await client.post(
             f"{host}/api/v1/auth/login",
             json={"Password": password},
         )
         resp.raise_for_status()
-        token = resp.cookies["session-auth"]
+        token = resp.cookies.get("session-auth")
+        if not token:
+            raise ValueError("Duplicati login response missing 'session-auth' cookie; check your password and Duplicati version")
         _session_token = token
         return token
 
@@ -35,8 +40,8 @@ async def _login() -> str:
 async def _request(method: str, path: str, **kwargs: Any) -> httpx.Response:
     """Make an authenticated request; re-login once on 401."""
     global _session_token
-    host = os.environ.get("DUPLICATI_HOST", "http://localhost:8200")
-    timeout = float(os.environ.get("DUPLICATI_TIMEOUT", "30"))
+    host = os.environ.get("DUPLICATI_HOST", _DEFAULT_HOST)
+    timeout = float(os.environ.get("DUPLICATI_TIMEOUT", str(_DEFAULT_TIMEOUT)))
     if _session_token is None:
         await _login()
     async with httpx.AsyncClient(timeout=timeout) as client:
