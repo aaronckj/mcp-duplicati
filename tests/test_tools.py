@@ -426,3 +426,65 @@ async def test_resume_error(monkeypatch):
 
     assert "error" in result
     assert result["tool"] == "resume"
+
+
+# ---------------------------------------------------------------------------
+# get_logs
+# ---------------------------------------------------------------------------
+
+async def test_get_logs_global(monkeypatch):
+    """Without backup_id, uses /api/v1/logdata/log."""
+    payload = [
+        {"When": "2024-01-01T02:05:00Z", "Type": "Information", "Message": "Backup completed"},
+        {"When": "2024-01-01T02:00:00Z", "Type": "Information", "Message": "Backup started"},
+    ]
+
+    async def fake_request(method, path, **kw):
+        assert path == "/api/v1/logdata/log"
+        assert kw.get("params", {}).get("pagesize") == 20
+        return make_response(200, payload)
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.get_logs()
+
+    assert isinstance(result["result"], list)
+    assert len(result["result"]) == 2
+    assert result["result"][0]["Type"] == "Information"
+
+
+async def test_get_logs_for_backup(monkeypatch):
+    """With backup_id, uses /api/v1/backup/{id}/log."""
+    async def fake_request(method, path, **kw):
+        assert path == "/api/v1/backup/1/log"
+        return make_response(200, [{"When": "2024-01-01T02:05:00Z", "Message": "Done"}])
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.get_logs(backup_id="1")
+
+    assert isinstance(result["result"], list)
+
+
+async def test_get_logs_custom_page_size(monkeypatch):
+    async def fake_request(method, path, **kw):
+        assert kw.get("params", {}).get("pagesize") == 5
+        return make_response(200, [])
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.get_logs(page_size=5)
+
+    assert result["result"] == []
+
+
+async def test_get_logs_error(monkeypatch):
+    async def fake_request(method, path, **kw):
+        raise httpx.ConnectError("Connection refused")
+
+    import mcp_duplicati.server as srv
+    monkeypatch.setattr(srv, "_request", fake_request)
+    result = await srv.get_logs()
+
+    assert "error" in result
+    assert result["tool"] == "get_logs"

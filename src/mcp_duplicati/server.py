@@ -153,6 +153,21 @@ async def resume() -> dict:
         return {"error": str(e), "tool": "resume", "detail": type(e).__name__}
 
 
+@mcp.tool()
+async def get_logs(backup_id: str | None = None, page_size: int = 20) -> dict:
+    """Retrieve recent log entries. backup_id: optional, filters to a specific job."""
+    try:
+        if backup_id is not None:
+            path = f"/api/v1/backup/{backup_id}/log"
+        else:
+            path = "/api/v1/logdata/log"
+        resp = await _request("GET", path, params={"pagesize": page_size})
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return {"error": str(e), "tool": "get_logs", "detail": type(e).__name__}
+
+
 def main() -> None:
     mcp.run()
 
