@@ -795,6 +795,17 @@ async def get_system_info() -> dict:
 
 
 @mcp.tool()
+async def list_installed_backends() -> dict:
+    """List all storage backend modules installed in Duplicati. Returns each backend's key, display name, supported URL schemes, and configurable options. Useful when setting up new backup jobs to discover available destinations (S3, FTP, Backblaze B2, Google Drive, Azure Blob, etc.)."""
+    try:
+        resp = await _request("GET", "/api/v1/backendmodules")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "list_installed_backends")
+
+
+@mcp.tool()
 async def list_remote_volumes(backup_id: str) -> dict:
     """List the remote storage volumes (dblock/dindex/dlist files) stored at the backup destination for a job. Returns file names, sizes, and last modified timestamps. Useful for auditing destination storage and understanding backup storage layout. backup_id: backup job ID from list_backups."""
     if not backup_id or not backup_id.strip():
