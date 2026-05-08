@@ -293,13 +293,16 @@ async def import_backup_config(config_json: str) -> dict:
 
 
 @mcp.tool()
-async def export_backup_config(backup_id: str) -> dict:
-    """Export a backup job's full configuration as JSON. Use this to save/restore job definitions or migrate to another Duplicati instance."""
+async def export_backup_config(backup_id: str, include_all_options: bool = False) -> dict:
+    """Export a backup job's full configuration as JSON. Use this to save/restore job definitions or migrate to another Duplicati instance. include_all_options: include all effective options with defaults (larger output but fully self-contained)."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "export_backup_config"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("GET", f"/api/v1/backup/{backup_id}/export")
+        params: dict = {}
+        if include_all_options:
+            params["all-options"] = "true"
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}/export", params=params if params else None)
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
@@ -1036,48 +1039,6 @@ async def poll_operations(last_event_id: int = -1) -> dict:
 
 
 @mcp.tool()
-async def list_notifications() -> dict:
-    """List all Duplicati system notifications (completed operations, errors, warnings). Returns message text, type, and timestamp for each notification."""
-    try:
-        resp = await _request("GET", "/api/v1/notifications")
-        resp.raise_for_status()
-        return {"result": resp.json()}
-    except Exception as e:
-        return _err(e, "list_notifications")
-
-
-@mcp.tool()
-async def dismiss_notification(notification_id: int) -> dict:
-    """Dismiss (delete) a Duplicati notification by ID. Use list_notifications to find notification IDs."""
-    try:
-        resp = await _request("DELETE", f"/api/v1/notification/{notification_id}")
-        resp.raise_for_status()
-        return {"result": {"notification_id": notification_id, "dismissed": True}}
-    except Exception as e:
-        return _err(e, "dismiss_notification")
-
-
-@mcp.tool()
-async def update_backup(backup_id: str, config_json: str) -> dict:
-    """Update an existing Duplicati backup job configuration. backup_id: job ID from list_backups. config_json: full backup configuration as JSON — fetch with get_backup_status first, modify fields, then pass here. WARNING: replaces the entire job config."""
-    if not backup_id or not backup_id.strip():
-        return {"error": "backup_id must not be empty", "tool": "update_backup"}
-    if not config_json or not config_json.strip():
-        return {"error": "config_json must not be empty", "tool": "update_backup"}
-    try:
-        config = json.loads(config_json)
-    except json.JSONDecodeError as e:
-        return {"error": f"Invalid JSON: {e}", "tool": "update_backup"}
-    backup_id = backup_id.strip()
-    try:
-        resp = await _request("PUT", f"/api/v1/backup/{backup_id}", json=config)
-        resp.raise_for_status()
-        return {"result": {"backup_id": backup_id, "updated": True}}
-    except Exception as e:
-        return _err(e, "update_backup")
-
-
-@mcp.tool()
 async def get_task_status(task_id: int) -> dict:
     """Get the status of a specific Duplicati background task by ID. Returns task state (running, completed, failed), progress, and any error message. Task IDs appear in backup operation responses and poll_operations events."""
     try:
@@ -1086,21 +1047,6 @@ async def get_task_status(task_id: int) -> dict:
         return {"result": resp.json()}
     except Exception as e:
         return _err(e, "get_task_status")
-
-
-@mcp.tool()
-async def export_backup_config(backup_id: str, include_all_options: bool = True) -> dict:
-    """Export the full configuration of a Duplicati backup job as JSON. Useful for backup/migration of job configs. backup_id: job ID from list_backups. include_all_options: include all effective options including defaults."""
-    if not backup_id or not backup_id.strip():
-        return {"error": "backup_id must not be empty", "tool": "export_backup_config"}
-    backup_id = backup_id.strip()
-    try:
-        params = {"all-options": str(include_all_options).lower()}
-        resp = await _request("GET", f"/api/v1/backup/{backup_id}/export", params=params)
-        resp.raise_for_status()
-        return {"result": resp.json()}
-    except Exception as e:
-        return _err(e, "export_backup_config")
 
 
 @mcp.tool()
