@@ -568,7 +568,7 @@ async def stop_task(task_id: int) -> dict:
     if task_id <= 0:
         return {"error": "task_id must be a positive integer", "tool": "stop_task"}
     try:
-        resp = await _request("DELETE", f"/api/v1/task/{task_id}")
+        resp = await _request("POST", f"/api/v1/task/{task_id}/abort")
         resp.raise_for_status()
         return {"result": {"task_id": task_id, "stopped": True}}
     except Exception as e:
@@ -1038,16 +1038,17 @@ async def get_backup_statistics(backup_id: str) -> dict:
         stats_resp.raise_for_status()
         backup_info = stats_resp.json() or {}
         settings = backup_info.get("Backup", backup_info)
+        metadata = settings.get("Metadata") or {}
         return {"result": {
             "backup_id": backup_id,
             "name": settings.get("Name"),
             "latest_fileset": latest,
             "total_filesets": len(filesets),
-            "source_size": settings.get("Metadata", {}).get("SourceSizeString"),
-            "backup_size": settings.get("Metadata", {}).get("BackupSizeString"),
-            "last_duration": settings.get("Metadata", {}).get("LastBackupDuration"),
-            "last_backup": settings.get("Metadata", {}).get("LastBackupDate"),
-            "file_count": settings.get("Metadata", {}).get("SourceFilesCount"),
+            "source_size": metadata.get("SourceSizeString"),
+            "backup_size": metadata.get("BackupSizeString"),
+            "last_duration": metadata.get("LastBackupDuration"),
+            "last_backup": metadata.get("LastBackupDate"),
+            "file_count": metadata.get("SourceFilesCount"),
         }}
     except Exception as e:
         err = _err(e, "get_backup_statistics")
