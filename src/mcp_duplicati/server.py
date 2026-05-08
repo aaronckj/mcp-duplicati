@@ -542,9 +542,9 @@ async def update_server_settings(key: str, value: str) -> dict:
     if not key or not key.strip():
         return {"error": "key must not be empty", "tool": "update_server_settings"}
     try:
-        resp = await _request("PUT", "/api/v1/serversettings", json={key.strip(): value})
+        resp = await _request("PUT", "/api/v1/serversettings", json={key.strip(): value.strip()})
         resp.raise_for_status()
-        return {"result": {"updated": True, "key": key.strip(), "value": value}}
+        return {"result": {"updated": True, "key": key.strip(), "value": value.strip()}}
     except Exception as e:
         return _err(e, "update_server_settings")
 
