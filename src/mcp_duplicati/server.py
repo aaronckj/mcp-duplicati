@@ -864,17 +864,28 @@ async def check_updates() -> dict:
 
 
 @mcp.tool()
-async def purge_broken_files(backup_id: str) -> dict:
-    """Remove database entries for backup set versions that reference files missing from remote storage. Useful when remote files have been manually deleted or lost — cleans up broken references so the backup job can continue without errors. This is less destructive than repair_backup. backup_id: backup job ID from list_backups."""
+async def purge_deleted_files(backup_id: str) -> dict:
+    """Purge backup set entries for files that have been deleted from the source paths. Scans backup history and removes file versions that no longer exist at source, reclaiming remote storage space over time. Different from repair_backup (which fixes the local DB) and compact_backup (which reclaims storage from expired retention). backup_id: backup job ID from list_backups."""
     if not backup_id or not backup_id.strip():
-        return {"error": "backup_id must not be empty", "tool": "purge_broken_files"}
+        return {"error": "backup_id must not be empty", "tool": "purge_deleted_files"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("POST", f"/api/v1/backup/{backup_id}/purgebrokenfiles")
+        resp = await _request("POST", f"/api/v1/backup/{backup_id}/purge")
         resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "purge_started": True}}
     except Exception as e:
-        return _err(e, "purge_broken_files")
+        return _err(e, "purge_deleted_files")
+
+
+@mcp.tool()
+async def get_changelog() -> dict:
+    """Get the Duplicati release changelog — recent version history with release notes for the installed and available versions. Useful for understanding what changed between versions before upgrading."""
+    try:
+        resp = await _request("GET", "/api/v1/changelog")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "get_changelog")
 
 
 @mcp.tool()
