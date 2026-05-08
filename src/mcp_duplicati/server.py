@@ -149,7 +149,9 @@ async def get_backup(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
-        return _err(e, "get_backup")
+        err = _err(e, "get_backup")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -292,7 +294,9 @@ async def export_backup_config(backup_id: str, include_all_options: bool = False
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
-        return _err(e, "export_backup_config")
+        err = _err(e, "export_backup_config")
+        err["backup_id"] = backup_id
+        return err
 
 
 
@@ -308,7 +312,9 @@ async def get_backup_commandline(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
-        return _err(e, "get_backup_commandline")
+        err = _err(e, "get_backup_commandline")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -431,7 +437,9 @@ async def search_backup_files(backup_id: str, path_filter: str = "*", restore_ti
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
-        return _err(e, "search_backup_files")
+        err = _err(e, "search_backup_files")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -456,7 +464,10 @@ async def restore_files(backup_id: str, restore_path: str, source_path: str = ""
         resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "restore_path": restore_path, "restore_started": True}}
     except Exception as e:
-        return _err(e, "restore_files")
+        err = _err(e, "restore_files")
+        err["backup_id"] = backup_id
+        err["restore_path"] = restore_path
+        return err
 
 
 @mcp.tool()
