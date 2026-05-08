@@ -1088,6 +1088,32 @@ async def get_task_status(task_id: int) -> dict:
         return _err(e, "get_task_status")
 
 
+@mcp.tool()
+async def export_backup_config(backup_id: str, include_all_options: bool = True) -> dict:
+    """Export the full configuration of a Duplicati backup job as JSON. Useful for backup/migration of job configs. backup_id: job ID from list_backups. include_all_options: include all effective options including defaults."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "export_backup_config"}
+    backup_id = backup_id.strip()
+    try:
+        params = {"all-options": str(include_all_options).lower()}
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}/export", params=params)
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "export_backup_config")
+
+
+@mcp.tool()
+async def abort_task(task_id: int) -> dict:
+    """Abort a running Duplicati background task. task_id: task ID from poll_operations or backup operation responses. Returns immediately; use get_task_status to confirm termination."""
+    try:
+        resp = await _request("POST", f"/api/v1/task/{task_id}/abort")
+        resp.raise_for_status()
+        return {"result": {"task_id": task_id, "aborted": True}}
+    except Exception as e:
+        return _err(e, "abort_task")
+
+
 def main() -> None:
     mcp.run()
 
