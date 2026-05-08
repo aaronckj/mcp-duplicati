@@ -209,6 +209,7 @@ async def create_backup(name: str, source_paths: str, destination_url: str, pass
             schedule["AllowedDays"] = day_list
     config = {
         "Backup": {
+            "ID": "",
             "Name": name,
             "TargetURL": destination_url,
             "Sources": sources,
@@ -626,11 +627,12 @@ async def get_logs(backup_id: str = "", page_size: int = 20, page: int = 0, leve
     if backup_id and backup_id.strip() and level:
         return {"error": "level filter only applies to server-wide logs — omit backup_id to filter by level", "tool": "get_logs"}
     try:
-        params: dict = {"pagesize": page_size, "page": page}
         if backup_id and backup_id.strip():
             path = f"/api/v1/backup/{backup_id.strip()}/log"
+            params: dict = {"pagesize": page_size, "offset": page * page_size}
         else:
             path = "/api/v1/logdata/log"
+            params = {"pagesize": page_size, "page": page}
             if level:
                 params["level"] = level
         resp = await _request("GET", path, params=params)
@@ -841,7 +843,7 @@ async def clear_logs(backup_id: str = "") -> dict:
     backup_id = backup_id.strip() if backup_id else ""
     try:
         if backup_id:
-            resp = await _request("DELETE", f"/api/v1/backup/{backup_id}/log")
+            resp = await _request("DELETE", "/api/v1/logdata/log", params={"backupid": backup_id})
         else:
             resp = await _request("DELETE", "/api/v1/logdata/log")
         resp.raise_for_status()
