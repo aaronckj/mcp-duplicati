@@ -1131,7 +1131,7 @@ async def poll_operations(last_event_id: int = -1) -> dict:
     if last_event_id < -1:
         return {"error": "last_event_id must be -1 (initial poll) or a non-negative event ID from a previous poll", "tool": "poll_operations"}
     try:
-        params: dict = {"lasteventid": last_event_id, "lonpolltime": 0}
+        params: dict = {"lasteventid": last_event_id, "longpolltime": 0}
         resp = await _request("GET", "/api/v1/serverstate", params=params)
         resp.raise_for_status()
         return {"result": resp.json()}
@@ -1259,6 +1259,7 @@ async def get_backup_report(backup_id: str) -> dict:
             "errors": metadata.get("LastBackupErrors"),
             "warnings": metadata.get("LastBackupWarnings"),
             "duration": metadata.get("LastBackupDuration"),
+            "recent_log": logs,
         }}
     except Exception as e:
         err = _err(e, "get_backup_report")
