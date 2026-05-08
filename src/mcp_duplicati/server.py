@@ -902,6 +902,33 @@ async def delete_local_database(backup_id: str) -> dict:
         return _err(e, "delete_local_database")
 
 
+@mcp.tool()
+async def list_sources(destination_url: str, path: str = "/") -> dict:
+    """Browse a remote backup destination to list files and folders. Useful for verifying the backup target is accessible and seeing what's stored there. destination_url: backend URL (e.g. s3://bucket/prefix, ftp://host/path, file:///local). path: folder to list within the destination (default: root)."""
+    if not destination_url or not destination_url.strip():
+        return {"error": "destination_url must not be empty", "tool": "list_sources"}
+    try:
+        params = {"url": destination_url.strip(), "path": path.strip() or "/"}
+        resp = await _request("GET", "/api/v1/remoteoperation/list", params=params)
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "list_sources")
+
+
+@mcp.tool()
+async def create_remote_folder(destination_url: str) -> dict:
+    """Create the remote folder/bucket for a backup destination if it does not exist. destination_url: backend URL pointing to the folder to create (e.g. s3://bucket/prefix)."""
+    if not destination_url or not destination_url.strip():
+        return {"error": "destination_url must not be empty", "tool": "create_remote_folder"}
+    try:
+        resp = await _request("POST", "/api/v1/remoteoperation/create", json={"url": destination_url.strip()})
+        resp.raise_for_status()
+        return {"result": {"created": True, "destination_url": destination_url.strip()}}
+    except Exception as e:
+        return _err(e, "create_remote_folder")
+
+
 def main() -> None:
     mcp.run()
 
