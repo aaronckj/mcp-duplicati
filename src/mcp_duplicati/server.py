@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -239,7 +240,7 @@ async def update_backup(
 
         put_resp = await _request("PUT", f"/api/v1/backup/{bid}", json=current)
         put_resp.raise_for_status()
-        return {"result": {"backup_id": backup_id, "updated": True}}
+        return {"result": {"backup_id": bid, "updated": True}}
     except Exception as e:
         return _err(e, "update_backup")
 
@@ -461,7 +462,7 @@ async def stop_task(task_id: str) -> dict:
     try:
         resp = await _request("DELETE", f"/api/v1/task/{task_id.strip()}")
         resp.raise_for_status()
-        return {"result": {"task_id": task_id, "stopped": True}}
+        return {"result": {"task_id": task_id.strip(), "stopped": True}}
     except Exception as e:
         return _err(e, "stop_task")
 
