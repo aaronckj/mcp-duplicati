@@ -480,8 +480,10 @@ async def get_logs(backup_id: str = "", page_size: int = 20, page: int = 0, leve
     page_size = min(max(1, page_size), 500)
     page = max(0, page)
     _valid_levels = {"General", "Warning", "Error", "Retry", "Upload", "Download"}
-    if level and level not in _valid_levels:
-        return {"error": f"Invalid level '{level}'. Valid: {', '.join(sorted(_valid_levels))}", "tool": "get_logs"}
+    if level:
+        level = level.strip().title()
+        if level not in _valid_levels:
+            return {"error": f"Invalid level '{level}'. Valid: {', '.join(sorted(_valid_levels))}", "tool": "get_logs"}
     try:
         params: dict = {"pagesize": page_size, "page": page}
         if backup_id and backup_id.strip():
