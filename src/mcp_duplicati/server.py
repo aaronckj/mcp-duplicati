@@ -1317,6 +1317,10 @@ async def set_backup_retention(
         return {"error": "backup_id must not be empty", "tool": "set_backup_retention"}
     if keep_versions < 0:
         return {"error": "keep_versions must be >= 0 (0 = unlimited)", "tool": "set_backup_retention"}
+    if keep_time and keep_time.strip():
+        import re as _re_rt
+        if not _re_rt.match(r"^\d+[smhdwDWMY]$", keep_time.strip()):
+            return {"error": "keep_time format must be a number followed by a unit: s(econds), m(inutes), h(ours), d/D(ays), W(eeks), M(onths), Y(ears) — e.g. '30D', '6M', '1Y'", "tool": "set_backup_retention"}
     backup_id = backup_id.strip()
     retention_map = {
         "keep-versions": str(keep_versions) if keep_versions > 0 else "",
