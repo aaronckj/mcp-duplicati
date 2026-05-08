@@ -478,6 +478,8 @@ async def get_logs(backup_id: str = "", page_size: int = 20, page: int = 0, leve
         params: dict = {"pagesize": page_size, "page": page}
         if backup_id and backup_id.strip():
             path = f"/api/v1/backup/{backup_id}/log"
+            if level:
+                params["level"] = level
         else:
             path = "/api/v1/logdata/log"
             if level:
@@ -609,6 +611,24 @@ async def is_backup_active(backup_id: str) -> dict:
         return {"result": resp.json()}
     except Exception as e:
         return _err(e, "is_backup_active")
+
+
+
+@mcp.tool()
+async def delete_backup_schedule(backup_id: str) -> dict:
+    """Remove the automatic schedule from a backup job so it only runs on-demand. Fetches current config, sets Schedule to null, and PUTs updated version. Pairs with set_backup_schedule."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "delete_backup_schedule"}
+    try:
+        resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}")
+        resp.raise_for_status()
+        current = resp.json()
+        current["Schedule"] = None
+        put_resp = await _request("PUT", f"/api/v1/backup/{backup_id.strip()}", json=current)
+        put_resp.raise_for_status()
+        return {"result": {"backup_id": backup_id, "schedule_removed": True}}
+    except Exception as e:
+        return _err(e, "delete_backup_schedule")
 
 
 def main() -> None:
