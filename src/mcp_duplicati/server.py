@@ -981,6 +981,34 @@ async def get_ui_settings() -> dict:
         return _err(e, "get_ui_settings")
 
 
+@mcp.tool()
+async def update_ui_settings(settings_json: str) -> dict:
+    """Update Duplicati web UI settings. settings_json: JSON object with key-value pairs (e.g. '{\"language\": \"en-US\", \"startup-delay\": \"0\"}'. Use get_ui_settings to see current settings and available keys."""
+    if not settings_json or not settings_json.strip():
+        return {"error": "settings_json must not be empty", "tool": "update_ui_settings"}
+    try:
+        settings = json.loads(settings_json)
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON: {e}", "tool": "update_ui_settings"}
+    try:
+        resp = await _request("POST", "/api/v1/uisettings", json=settings)
+        resp.raise_for_status()
+        return {"result": resp.json() if resp.text.strip() else {"saved": True}}
+    except Exception as e:
+        return _err(e, "update_ui_settings")
+
+
+@mcp.tool()
+async def get_backup_defaults() -> dict:
+    """Get the default settings applied to all new Duplicati backup jobs: default compression, encryption, retention policy, and other global defaults."""
+    try:
+        resp = await _request("GET", "/api/v1/backupdefaults")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "get_backup_defaults")
+
+
 def main() -> None:
     mcp.run()
 
