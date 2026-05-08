@@ -575,7 +575,6 @@ async def set_backup_schedule(backup_id: str, repeat: str, time: str = "", allow
         return {"error": "backup_id must not be empty", "tool": "set_backup_schedule"}
     if not repeat or not repeat.strip():
         return {"error": "repeat must not be empty (e.g. '1D', '1W', '12H')", "tool": "set_backup_schedule"}
-    from datetime import datetime as _dt, timezone as _tz
     try:
         resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}")
         resp.raise_for_status()
@@ -586,7 +585,7 @@ async def set_backup_schedule(backup_id: str, repeat: str, time: str = "", allow
         if time and time.strip():
             schedule["Time"] = time.strip()
         elif not schedule.get("Time"):
-            schedule["Time"] = _dt.now(_tz.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            schedule["Time"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         if allowed_days and allowed_days.strip():
             schedule["AllowedDays"] = [d.strip().lower() for d in allowed_days.split(",") if d.strip()]
 
@@ -596,6 +595,20 @@ async def set_backup_schedule(backup_id: str, repeat: str, time: str = "", allow
         return {"result": {"backup_id": backup_id, "schedule": schedule}}
     except Exception as e:
         return _err(e, "set_backup_schedule")
+
+
+
+@mcp.tool()
+async def is_backup_active(backup_id: str) -> dict:
+    """Check whether a backup job is currently running or queued. Returns an active boolean. Useful for polling before triggering a new run to avoid conflicts."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "is_backup_active"}
+    try:
+        resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}/isactive")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "is_backup_active")
 
 
 def main() -> None:
