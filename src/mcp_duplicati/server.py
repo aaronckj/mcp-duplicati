@@ -535,11 +535,10 @@ async def list_tasks() -> dict:
 
 
 @mcp.tool()
-async def get_task(task_id: str) -> dict:
+async def get_task(task_id: int) -> dict:
     """Get details of a specific Duplicati task by its task ID. Returns task type, backup ID, and status. Use list_tasks to discover task IDs."""
-    if not task_id or not task_id.strip():
-        return {"error": "task_id must not be empty", "tool": "get_task"}
-    task_id = task_id.strip()
+    if task_id <= 0:
+        return {"error": "task_id must be a positive integer", "tool": "get_task"}
     try:
         resp = await _request("GET", f"/api/v1/task/{task_id}")
         resp.raise_for_status()
@@ -549,11 +548,10 @@ async def get_task(task_id: str) -> dict:
 
 
 @mcp.tool()
-async def stop_task(task_id: str) -> dict:
+async def stop_task(task_id: int) -> dict:
     """Stop a queued or running Duplicati task by its task ID. Use list_tasks to find task IDs. Running backup tasks are cancelled; queued tasks are dequeued."""
-    if not task_id or not task_id.strip():
-        return {"error": "task_id must not be empty", "tool": "stop_task"}
-    task_id = task_id.strip()
+    if task_id <= 0:
+        return {"error": "task_id must be a positive integer", "tool": "stop_task"}
     try:
         resp = await _request("DELETE", f"/api/v1/task/{task_id}")
         resp.raise_for_status()
