@@ -272,6 +272,8 @@ async def update_backup(
             backup["Settings"] = settings
         if exclude_filters:
             patterns = [p.strip() for p in exclude_filters.split(",") if p.strip()]
+            if not patterns:
+                return {"error": "exclude_filters contained no valid patterns after parsing", "tool": "update_backup"}
             backup["Filters"] = [{"Order": i, "Include": False, "Expression": p} for i, p in enumerate(patterns)]
         if repeat and repeat.strip():
             schedule = current.get("Schedule") or {}
@@ -484,10 +486,11 @@ async def search_backup_files(backup_id: str, path_filter: str = "*", restore_ti
     if rt != "latest" and not re.match(r'^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?', rt):
         return {"error": f"Invalid restore_time '{rt}'. Use 'latest' or an ISO timestamp (e.g. '2024-01-15T10:30:00Z').", "tool": "search_backup_files", "backup_id": backup_id}
     try:
+        pf = path_filter.strip() if path_filter and path_filter.strip() else "*"
         resp = await _request(
             "GET",
             f"/api/v1/backup/{backup_id}/files",
-            params={"filter": path_filter.strip(), "time": rt},
+            params={"filter": pf, "time": rt},
         )
         resp.raise_for_status()
         return {"result": resp.json()}
@@ -1381,7 +1384,6 @@ async def set_backup_retention(
             if value:
                 settings.append({"Name": name, "Value": value})
         backup["Settings"] = settings
-        data["Backup"] = backup
         put_resp = await _request("PUT", f"/api/v1/backup/{backup_id}", json=data)
         put_resp.raise_for_status()
         applied = {k: v for k, v in retention_map.items() if v}
