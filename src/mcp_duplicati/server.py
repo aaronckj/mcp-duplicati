@@ -794,6 +794,20 @@ async def get_system_info() -> dict:
         return _err(e, "get_system_info")
 
 
+@mcp.tool()
+async def list_remote_volumes(backup_id: str) -> dict:
+    """List the remote storage volumes (dblock/dindex/dlist files) stored at the backup destination for a job. Returns file names, sizes, and last modified timestamps. Useful for auditing destination storage and understanding backup storage layout. backup_id: backup job ID from list_backups."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "list_remote_volumes"}
+    backup_id = backup_id.strip()
+    try:
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}/remotevolumes")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "list_remote_volumes")
+
+
 def main() -> None:
     mcp.run()
 
