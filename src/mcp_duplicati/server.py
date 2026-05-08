@@ -702,10 +702,9 @@ async def get_server_setting(key: str) -> dict:
         resp = await _request("GET", "/api/v1/serversettings")
         resp.raise_for_status()
         settings = resp.json()
-        k = key
-        if k not in settings:
-            return {"error": f"Setting '{k}' not found. Use get_server_settings to list valid keys.", "tool": "get_server_setting"}
-        return {"result": {"key": k, "value": settings[k]}}
+        if key not in settings:
+            return {"error": f"Setting '{key}' not found. Use get_server_settings to list valid keys.", "tool": "get_server_setting"}
+        return {"result": {"key": key, "value": settings[key]}}
     except Exception as e:
         return _err(e, "get_server_setting")
 
