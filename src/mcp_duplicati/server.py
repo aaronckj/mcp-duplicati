@@ -1176,6 +1176,7 @@ async def add_backup_filter(backup_id: str, expression: str, include: bool = Fal
     except Exception as e:
         err = _err(e, "add_backup_filter")
         err["backup_id"] = backup_id
+        err["expression"] = expression
         return err
 
 
@@ -1207,6 +1208,7 @@ async def remove_backup_filter(backup_id: str, expression: str) -> dict:
     except Exception as e:
         err = _err(e, "remove_backup_filter")
         err["backup_id"] = backup_id
+        err["expression"] = expression
         return err
 
 
