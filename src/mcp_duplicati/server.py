@@ -171,8 +171,8 @@ async def get_backup(backup_id: str) -> dict:
 
 
 @mcp.tool()
-async def create_backup(name: str, source_paths: str, destination_url: str, passphrase: str = "", exclude_filters: str = "") -> dict:
-    """Create a new Duplicati backup job. source_paths: comma-separated local paths to back up. destination_url: Duplicati backend URL (e.g., 'file:///mnt/backup', 's3://bucket/path'). passphrase: optional AES-256 encryption key. exclude_filters: comma-separated glob patterns to exclude (e.g., '*.tmp,*.log,/proc/*')."""
+async def create_backup(name: str, source_paths: str, destination_url: str, passphrase: str = "", exclude_filters: str = "", repeat: str = "") -> dict:
+    """Create a new Duplicati backup job. source_paths: comma-separated local paths to back up. destination_url: Duplicati backend URL (e.g., 'file:///mnt/backup', 's3://bucket/path'). passphrase: optional AES-256 encryption key. exclude_filters: comma-separated glob patterns to exclude (e.g., '*.tmp,*.log,/proc/*'). repeat: optional schedule interval ('1D'=daily, '1W'=weekly, '12H'=every 12 hours, '30M'=every 30 minutes)."""
     if not name or not name.strip():
         return {"error": "name must not be empty", "tool": "create_backup"}
     name = name.strip()
@@ -190,6 +190,15 @@ async def create_backup(name: str, source_paths: str, destination_url: str, pass
     if exclude_filters:
         for pattern in [p.strip() for p in exclude_filters.split(",") if p.strip()]:
             filters.append({"Order": len(filters), "Include": False, "Expression": pattern})
+    schedule = None
+    if repeat and repeat.strip():
+        r = repeat.strip().upper()
+        if not re.match(r'^\d+[SMHDW]$', r):
+            return {"error": f"Invalid repeat format '{r}'. Expected number + unit: S (seconds), M (minutes), H (hours), D (days), W (weeks). E.g. '1D', '12H', '30M'.", "tool": "create_backup"}
+        schedule = {
+            "Repeat": r,
+            "Time": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }
     config = {
         "Backup": {
             "Name": name,
@@ -198,7 +207,7 @@ async def create_backup(name: str, source_paths: str, destination_url: str, pass
             "Settings": settings,
             "Filters": filters,
         },
-        "Schedule": None,
+        "Schedule": schedule,
     }
     try:
         resp = await _request("POST", "/api/v1/backups", json=config)
