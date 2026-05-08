@@ -1057,6 +1057,37 @@ async def dismiss_notification(notification_id: int) -> dict:
         return _err(e, "dismiss_notification")
 
 
+@mcp.tool()
+async def update_backup(backup_id: str, config_json: str) -> dict:
+    """Update an existing Duplicati backup job configuration. backup_id: job ID from list_backups. config_json: full backup configuration as JSON — fetch with get_backup_status first, modify fields, then pass here. WARNING: replaces the entire job config."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "update_backup"}
+    if not config_json or not config_json.strip():
+        return {"error": "config_json must not be empty", "tool": "update_backup"}
+    try:
+        config = json.loads(config_json)
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON: {e}", "tool": "update_backup"}
+    backup_id = backup_id.strip()
+    try:
+        resp = await _request("PUT", f"/api/v1/backup/{backup_id}", json=config)
+        resp.raise_for_status()
+        return {"result": {"backup_id": backup_id, "updated": True}}
+    except Exception as e:
+        return _err(e, "update_backup")
+
+
+@mcp.tool()
+async def get_task_status(task_id: int) -> dict:
+    """Get the status of a specific Duplicati background task by ID. Returns task state (running, completed, failed), progress, and any error message. Task IDs appear in backup operation responses and poll_operations events."""
+    try:
+        resp = await _request("GET", f"/api/v1/task/{task_id}")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "get_task_status")
+
+
 def main() -> None:
     mcp.run()
 
