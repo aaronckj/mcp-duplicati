@@ -1222,6 +1222,25 @@ async def is_backup_overdue(backup_id: str, max_hours: float = 25.0) -> dict:
         return _err(e, "is_backup_overdue")
 
 
+@mcp.tool()
+async def get_backup_retention(backup_id: str) -> dict:
+    """Get the configured retention policy for a backup job: keep-versions count, keep-time duration, and retention-policy string. Returns all retention-related settings extracted from the backup configuration."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "get_backup_retention"}
+    backup_id = backup_id.strip()
+    retention_keys = {"keep-versions", "keep-time", "retention-policy", "backup-retention", "no-auto-compact"}
+    try:
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}")
+        resp.raise_for_status()
+        data = resp.json()
+        backup = data.get("Backup", data)
+        settings = backup.get("Settings") or []
+        retention = {s["Name"]: s.get("Value") for s in settings if s.get("Name") in retention_keys}
+        return {"result": {"backup_id": backup_id, "retention": retention, "has_retention_policy": bool(retention)}}
+    except Exception as e:
+        return _err(e, "get_backup_retention")
+
+
 def main() -> None:
     mcp.run()
 
