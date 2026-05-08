@@ -135,14 +135,14 @@ async def backup_status(backup_id: str) -> dict:
         return {"error": "backup_id must not be empty", "tool": "backup_status"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}")
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}")
         resp.raise_for_status()
         data = resp.json()
         backup = data.get("Backup", data)
         schedule = data.get("Schedule") or {}
         metadata = backup.get("Metadata") or {}
         return {"result": {
-            "backup_id": backup_id.strip(),
+            "backup_id": backup_id,
             "name": backup.get("Name"),
             "last_run": metadata.get("LastBackupDate"),
             "last_result": metadata.get("LastBackupResult"),
@@ -162,7 +162,7 @@ async def get_backup(backup_id: str) -> dict:
         return {"error": "backup_id must not be empty", "tool": "get_backup"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}")
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}")
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
@@ -191,8 +191,8 @@ async def create_backup(name: str, source_paths: str, destination_url: str, pass
             filters.append({"Order": len(filters), "Include": False, "Expression": pattern})
     config = {
         "Backup": {
-            "Name": name.strip(),
-            "TargetURL": destination_url.strip(),
+            "Name": name,
+            "TargetURL": destination_url,
             "Sources": sources,
             "Settings": settings,
             "Filters": filters,
@@ -223,7 +223,7 @@ async def update_backup(
     if not any([name, source_paths, destination_url, passphrase, exclude_filters]):
         return {"error": "At least one field to update must be specified", "tool": "update_backup"}
     try:
-        bid = backup_id.strip()
+        bid = backup_id
         resp = await _request("GET", f"/api/v1/backup/{bid}")
         resp.raise_for_status()
         current = resp.json()
@@ -258,9 +258,9 @@ async def delete_backup(backup_id: str) -> dict:
         return {"error": "backup_id must not be empty", "tool": "delete_backup"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("DELETE", f"/api/v1/backup/{backup_id.strip()}")
+        resp = await _request("DELETE", f"/api/v1/backup/{backup_id}")
         resp.raise_for_status()
-        return {"result": {"backup_id": backup_id.strip(), "deleted": True}}
+        return {"result": {"backup_id": backup_id, "deleted": True}}
     except Exception as e:
         return _err(e, "delete_backup")
 
@@ -290,7 +290,7 @@ async def export_backup_config(backup_id: str) -> dict:
         return {"error": "backup_id must not be empty", "tool": "export_backup_config"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}/export")
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}/export")
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
@@ -306,7 +306,7 @@ async def get_backup_commandline(backup_id: str) -> dict:
         return {"error": "backup_id must not be empty", "tool": "get_backup_commandline"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}/commandline")
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}/commandline")
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
@@ -320,9 +320,9 @@ async def run_backup(backup_id: str) -> dict:
         return {"error": "backup_id must not be empty", "tool": "run_backup"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/run")
+        resp = await _request("POST", f"/api/v1/backup/{backup_id}/run")
         resp.raise_for_status()
-        return {"result": {"backup_id": backup_id.strip(), "triggered": True}}
+        return {"result": {"backup_id": backup_id, "triggered": True}}
     except Exception as e:
         return _err(e, "run_backup")
 
@@ -334,9 +334,9 @@ async def abort_backup(backup_id: str) -> dict:
         return {"error": "backup_id must not be empty", "tool": "abort_backup"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/abort")
+        resp = await _request("POST", f"/api/v1/backup/{backup_id}/abort")
         resp.raise_for_status()
-        return {"result": {"backup_id": backup_id.strip(), "aborted": True}}
+        return {"result": {"backup_id": backup_id, "aborted": True}}
     except Exception as e:
         return _err(e, "abort_backup")
 
@@ -348,9 +348,9 @@ async def repair_backup(backup_id: str) -> dict:
         return {"error": "backup_id must not be empty", "tool": "repair_backup"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/repair")
+        resp = await _request("POST", f"/api/v1/backup/{backup_id}/repair")
         resp.raise_for_status()
-        return {"result": {"backup_id": backup_id.strip(), "repair_started": True}}
+        return {"result": {"backup_id": backup_id, "repair_started": True}}
     except Exception as e:
         return _err(e, "repair_backup")
 
@@ -362,9 +362,9 @@ async def compact_backup(backup_id: str) -> dict:
         return {"error": "backup_id must not be empty", "tool": "compact_backup"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/compact")
+        resp = await _request("POST", f"/api/v1/backup/{backup_id}/compact")
         resp.raise_for_status()
-        return {"result": {"backup_id": backup_id.strip(), "compact_started": True}}
+        return {"result": {"backup_id": backup_id, "compact_started": True}}
     except Exception as e:
         return _err(e, "compact_backup")
 
@@ -376,9 +376,9 @@ async def verify_backup(backup_id: str) -> dict:
         return {"error": "backup_id must not be empty", "tool": "verify_backup"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/verify")
+        resp = await _request("POST", f"/api/v1/backup/{backup_id}/verify")
         resp.raise_for_status()
-        return {"result": {"backup_id": backup_id.strip(), "verify_started": True}}
+        return {"result": {"backup_id": backup_id, "verify_started": True}}
     except Exception as e:
         return _err(e, "verify_backup")
 
@@ -401,7 +401,7 @@ async def list_versions(backup_id: str) -> dict:
         return {"error": "backup_id must not be empty", "tool": "list_versions"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}/filesets")
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}/filesets")
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
@@ -417,7 +417,7 @@ async def search_backup_files(backup_id: str, path_filter: str = "*", restore_ti
     try:
         resp = await _request(
             "GET",
-            f"/api/v1/backup/{backup_id.strip()}/files",
+            f"/api/v1/backup/{backup_id}/files",
             params={"filter": path_filter.strip(), "time": restore_time.strip()},
         )
         resp.raise_for_status()
@@ -437,16 +437,16 @@ async def restore_files(backup_id: str, restore_path: str, source_path: str = ""
     restore_path = restore_path.strip()
     try:
         payload: dict = {
-            "restore-path": restore_path.strip(),
+            "restore-path": restore_path,
             "time": restore_time.strip(),
         }
         if source_path and source_path.strip():
             paths = [p.strip() for p in source_path.split(",") if p.strip()]
             if paths:
                 payload["paths"] = paths
-        resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/restore", json=payload)
+        resp = await _request("POST", f"/api/v1/backup/{backup_id}/restore", json=payload)
         resp.raise_for_status()
-        return {"result": {"backup_id": backup_id.strip(), "restore_path": restore_path.strip(), "restore_started": True}}
+        return {"result": {"backup_id": backup_id, "restore_path": restore_path, "restore_started": True}}
     except Exception as e:
         return _err(e, "restore_files")
 
@@ -480,7 +480,7 @@ async def get_task(task_id: str) -> dict:
         return {"error": "task_id must not be empty", "tool": "get_task"}
     task_id = task_id.strip()
     try:
-        resp = await _request("GET", f"/api/v1/task/{task_id.strip()}")
+        resp = await _request("GET", f"/api/v1/task/{task_id}")
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
@@ -494,9 +494,9 @@ async def stop_task(task_id: str) -> dict:
         return {"error": "task_id must not be empty", "tool": "stop_task"}
     task_id = task_id.strip()
     try:
-        resp = await _request("DELETE", f"/api/v1/task/{task_id.strip()}")
+        resp = await _request("DELETE", f"/api/v1/task/{task_id}")
         resp.raise_for_status()
-        return {"result": {"task_id": task_id.strip(), "stopped": True}}
+        return {"result": {"task_id": task_id, "stopped": True}}
     except Exception as e:
         return _err(e, "stop_task")
 
@@ -577,38 +577,11 @@ async def update_server_settings(key: str, value: str) -> dict:
         return {"error": "key must not be empty", "tool": "update_server_settings"}
     key = key.strip()
     try:
-        resp = await _request("PUT", "/api/v1/serversettings", json={key.strip(): value.strip()})
+        resp = await _request("PUT", "/api/v1/serversettings", json={key: value.strip()})
         resp.raise_for_status()
-        return {"result": {"updated": True, "key": key.strip(), "value": value.strip()}}
+        return {"result": {"updated": True, "key": key, "value": value.strip()}}
     except Exception as e:
         return _err(e, "update_server_settings")
-
-
-@mcp.tool()
-async def list_notifications() -> dict:
-    """List all pending Duplicati notifications and alerts."""
-    try:
-        resp = await _request("GET", "/api/v1/notifications")
-        resp.raise_for_status()
-        return {"result": resp.json()}
-    except Exception as e:
-        return _err(e, "list_notifications")
-
-
-@mcp.tool()
-async def dismiss_notification(notification_id: str) -> dict:
-    """Dismiss a Duplicati notification by ID."""
-    if not notification_id or not notification_id.strip():
-        return {"error": "notification_id must not be empty", "tool": "dismiss_notification"}
-    notification_id = notification_id.strip()
-    try:
-        resp = await _request("DELETE", f"/api/v1/notification/{notification_id.strip()}")
-        resp.raise_for_status()
-        return {"result": {"notification_id": notification_id.strip(), "dismissed": True}}
-    except Exception as e:
-        return _err(e, "dismiss_notification")
-
-
 
 
 @mcp.tool()
@@ -630,11 +603,11 @@ async def get_backup_schedule(backup_id: str) -> dict:
         return {"error": "backup_id must not be empty", "tool": "get_backup_schedule"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}")
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}")
         resp.raise_for_status()
         data = resp.json()
         schedule = data.get("Schedule") or data.get("schedule")
-        return {"result": {"backup_id": backup_id.strip(), "schedule": schedule}}
+        return {"result": {"backup_id": backup_id, "schedule": schedule}}
     except Exception as e:
         return _err(e, "get_backup_schedule")
 
@@ -649,12 +622,12 @@ async def set_backup_schedule(backup_id: str, repeat: str, time: str = "", allow
         return {"error": "repeat must not be empty (e.g. '1D', '1W', '12H')", "tool": "set_backup_schedule"}
     repeat = repeat.strip()
     try:
-        resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}")
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}")
         resp.raise_for_status()
         current = resp.json()
 
         schedule = current.get("Schedule") or {}
-        schedule["Repeat"] = repeat.strip()
+        schedule["Repeat"] = repeat
         if time and time.strip():
             schedule["Time"] = time.strip()
         elif not schedule.get("Time"):
@@ -668,9 +641,9 @@ async def set_backup_schedule(backup_id: str, repeat: str, time: str = "", allow
             schedule["AllowedDays"] = day_list
 
         current["Schedule"] = schedule
-        put_resp = await _request("PUT", f"/api/v1/backup/{backup_id.strip()}", json=current)
+        put_resp = await _request("PUT", f"/api/v1/backup/{backup_id}", json=current)
         put_resp.raise_for_status()
-        return {"result": {"backup_id": backup_id.strip(), "schedule": schedule}}
+        return {"result": {"backup_id": backup_id, "schedule": schedule}}
     except Exception as e:
         return _err(e, "set_backup_schedule")
 
@@ -682,7 +655,7 @@ async def is_backup_active(backup_id: str) -> dict:
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "is_backup_active"}
     backup_id = backup_id.strip()
-    bid = backup_id.strip()
+    bid = backup_id
     try:
         resp = await _request("GET", "/api/v1/tasks")
         resp.raise_for_status()
@@ -710,13 +683,13 @@ async def delete_backup_schedule(backup_id: str) -> dict:
         return {"error": "backup_id must not be empty", "tool": "delete_backup_schedule"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}")
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}")
         resp.raise_for_status()
         current = resp.json()
         current["Schedule"] = None
-        put_resp = await _request("PUT", f"/api/v1/backup/{backup_id.strip()}", json=current)
+        put_resp = await _request("PUT", f"/api/v1/backup/{backup_id}", json=current)
         put_resp.raise_for_status()
-        return {"result": {"backup_id": backup_id.strip(), "schedule_removed": True}}
+        return {"result": {"backup_id": backup_id, "schedule_removed": True}}
     except Exception as e:
         return _err(e, "delete_backup_schedule")
 
@@ -731,7 +704,7 @@ async def get_server_setting(key: str) -> dict:
         resp = await _request("GET", "/api/v1/serversettings")
         resp.raise_for_status()
         settings = resp.json()
-        k = key.strip()
+        k = key
         if k not in settings:
             return {"error": f"Setting '{k}' not found. Use get_server_settings to list valid keys.", "tool": "get_server_setting"}
         return {"result": {"key": k, "value": settings[k]}}
@@ -749,11 +722,11 @@ async def test_connection(destination_url: str) -> dict:
         resp = await _request(
             "POST",
             "/api/v1/remoteoperation/test",
-            json={"uri": destination_url.strip()},
+            json={"uri": destination_url},
         )
         resp.raise_for_status()
         data = resp.json()
-        return {"result": {"destination_url": destination_url.strip(), "success": True, "response": data}}
+        return {"result": {"destination_url": destination_url, "success": True, "response": data}}
     except Exception as e:
         return _err(e, "test_connection")
 
