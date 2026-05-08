@@ -1088,7 +1088,7 @@ async def update_ui_settings(settings_json: str) -> dict:
     except json.JSONDecodeError as e:
         return {"error": f"Invalid JSON: {e}", "tool": "update_ui_settings"}
     try:
-        resp = await _request("POST", "/api/v1/uisettings", json=settings)
+        resp = await _request("PATCH", "/api/v1/uisettings", json=settings)
         resp.raise_for_status()
         return {"result": resp.json() if resp.text.strip() else {"saved": True}}
     except Exception as e:
