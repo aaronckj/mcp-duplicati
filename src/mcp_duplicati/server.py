@@ -102,9 +102,9 @@ async def _request(method: str, path: str, **kwargs: Any) -> httpx.Response:
 
 @mcp.tool()
 async def server_info() -> dict:
-    """Get Duplicati server state including version, OS type, program state, and server time. For normalized key access use fields: ServerVersion, OSType, ProgramState, ServerTime."""
+    """Get Duplicati system information including installed version, OS type, and machine ID. For runtime scheduler/task state use get_server_state instead."""
     try:
-        resp = await _request("GET", "/api/v1/serverstate")
+        resp = await _request("GET", "/api/v1/systeminfo")
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
@@ -559,7 +559,7 @@ async def get_task(task_id: int) -> dict:
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
-        return _err(e, "get_task")
+        err = _err(e, "get_task"); err["task_id"] = task_id; return err
 
 
 @mcp.tool()
@@ -572,7 +572,7 @@ async def stop_task(task_id: int) -> dict:
         resp.raise_for_status()
         return {"result": {"task_id": task_id, "stopped": True}}
     except Exception as e:
-        return _err(e, "stop_task")
+        err = _err(e, "stop_task"); err["task_id"] = task_id; return err
 
 
 @mcp.tool()
