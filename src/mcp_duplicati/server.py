@@ -186,8 +186,8 @@ async def create_backup(name: str, source_paths: str, destination_url: str, pass
             filters.append({"Order": len(filters), "Include": False, "Expression": pattern})
     config = {
         "Backup": {
-            "Name": name,
-            "TargetURL": destination_url,
+            "Name": name.strip(),
+            "TargetURL": destination_url.strip(),
             "Sources": sources,
             "Settings": settings,
             "Filters": filters,
