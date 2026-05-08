@@ -552,6 +552,52 @@ async def dismiss_all_notifications() -> dict:
         return _err(e, "dismiss_all_notifications")
 
 
+
+@mcp.tool()
+async def get_backup_schedule(backup_id: str) -> dict:
+    """Get the schedule for a backup job: next run time, repeat interval, and allowed days. Returns null schedule if no schedule is configured."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "get_backup_schedule"}
+    try:
+        resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}")
+        resp.raise_for_status()
+        data = resp.json()
+        schedule = data.get("Schedule") or data.get("schedule")
+        return {"result": {"backup_id": backup_id, "schedule": schedule}}
+    except Exception as e:
+        return _err(e, "get_backup_schedule")
+
+
+@mcp.tool()
+async def set_backup_schedule(backup_id: str, repeat: str, time: str = "", allowed_days: str = "") -> dict:
+    """Set or update the automatic schedule for a backup job. repeat: interval string ('1D' = daily, '1W' = weekly, '12H' = every 12 hours, '30M' = every 30 minutes). time: ISO 8601 datetime for next run (empty = now). allowed_days: comma-separated days to run on ('mon,tue,wed,thu,fri,sat,sun'). Fetches current config and PUTs updated version."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "set_backup_schedule"}
+    if not repeat or not repeat.strip():
+        return {"error": "repeat must not be empty (e.g. '1D', '1W', '12H')", "tool": "set_backup_schedule"}
+    from datetime import datetime as _dt, timezone as _tz
+    try:
+        resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}")
+        resp.raise_for_status()
+        current = resp.json()
+
+        schedule = current.get("Schedule") or {}
+        schedule["Repeat"] = repeat.strip()
+        if time and time.strip():
+            schedule["Time"] = time.strip()
+        elif not schedule.get("Time"):
+            schedule["Time"] = _dt.now(_tz.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        if allowed_days and allowed_days.strip():
+            schedule["AllowedDays"] = [d.strip().lower() for d in allowed_days.split(",") if d.strip()]
+
+        current["Schedule"] = schedule
+        put_resp = await _request("PUT", f"/api/v1/backup/{backup_id.strip()}", json=current)
+        put_resp.raise_for_status()
+        return {"result": {"backup_id": backup_id, "schedule": schedule}}
+    except Exception as e:
+        return _err(e, "set_backup_schedule")
+
+
 def main() -> None:
     mcp.run()
 
