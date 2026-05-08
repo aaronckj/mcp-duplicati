@@ -1166,6 +1166,34 @@ async def get_backup_report(backup_id: str) -> dict:
         return _err(e, "get_backup_report")
 
 
+@mcp.tool()
+async def move_backup_source(backup_id: str, old_path: str, new_path: str) -> dict:
+    """Update a single source path in a backup job without replacing all sources. Useful when a directory is moved or renamed. backup_id: from list_backups. old_path: exact path to replace. new_path: replacement path. Errors if old_path is not found in current sources."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "move_backup_source"}
+    if not old_path or not old_path.strip():
+        return {"error": "old_path must not be empty", "tool": "move_backup_source"}
+    if not new_path or not new_path.strip():
+        return {"error": "new_path must not be empty", "tool": "move_backup_source"}
+    backup_id = backup_id.strip()
+    old_path = old_path.strip()
+    new_path = new_path.strip()
+    try:
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}")
+        resp.raise_for_status()
+        current = resp.json()
+        backup = current.get("Backup", current)
+        sources = backup.get("Sources") or []
+        if old_path not in sources:
+            return {"error": f"Path '{old_path}' not found in backup sources", "tool": "move_backup_source"}
+        backup["Sources"] = [new_path if s == old_path else s for s in sources]
+        put_resp = await _request("PUT", f"/api/v1/backup/{backup_id}", json=current)
+        put_resp.raise_for_status()
+        return {"result": {"backup_id": backup_id, "replaced": old_path, "with": new_path, "total_sources": len(backup["Sources"])}}
+    except Exception as e:
+        return _err(e, "move_backup_source")
+
+
 def main() -> None:
     mcp.run()
 
