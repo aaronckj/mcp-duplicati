@@ -1,0 +1,48 @@
+# vaultproxy integration for mcp-duplicati
+# ──────────────────────────────────────────
+# mcp-duplicati supports native vault-proxy integration ("smart" mode).
+# Credentials never appear in the MCP server's process environment.
+#
+# HOW IT WORKS
+# ─────────────
+# When VAULT_PROXY_URL is set (auto-injected by vaultproxy --launch), mcp-duplicati
+# routes all API calls through POST $VAULT_PROXY_URL/proxy instead of managing
+# sessions directly. vaultproxy handles the Duplicati login flow, caches the
+# session token, and injects it on every request. The Duplicati password never
+# appears in the MCP server process environment.
+#
+# SETUP
+# ─────
+# 1. In Vaultwarden, create an item named "vault-proxy - Duplicati" in your
+#    vault-proxy folder. Set the password field to your Duplicati password.
+#
+# 2. Add the [[service]] block below to your vaultproxy services.toml.
+#
+# 3. Add the [[mcp_server]] block to your vaultproxy mcp-servers.toml.
+#
+# 4. Launch via: vaultproxy --launch mcp-duplicati
+#
+# OPTIONAL ENV VAR
+# ────────────────
+# VAULT_PROXY_SERVICE — override the service name (default: "duplicati").
+#   Must match the `name` field in the [[service]] block below.
+
+# ── services.toml entry ──────────────────────────────────────────────────────
+[[service]]
+name = "duplicati"
+base_url = "http://localhost:8200"   # update to your Duplicati host
+auth = "session"
+login_path = "/api/v1/auth/login"
+token_field = "AccessToken"          # returned by Duplicati login response
+vault_item = "vault-proxy - Duplicati"
+login_include_username = false        # Duplicati login accepts only Password, no username field
+
+# ── mcp-servers.toml entry ───────────────────────────────────────────────────
+# [[mcp_server]]
+# name = "mcp-duplicati"
+# command = "uvx mcp-duplicati@latest"
+# # VAULT_PROXY_URL and VAULT_PROXY_CALLER_ID are auto-injected — no credentials needed.
+#
+#   [[mcp_server.env]]
+#   var = "DUPLICATI_HOST"
+#   value = "http://localhost:8200"   # update to your Duplicati host

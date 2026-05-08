@@ -16,6 +16,19 @@ _DEFAULT_TIMEOUT = 30.0
 _session_token: str | None = None
 
 
+def _build_proxy_body(method: str, path: str, **kwargs: Any) -> dict:
+    body: dict = {
+        "service": os.environ.get("VAULT_PROXY_SERVICE", "duplicati"),
+        "method": method,
+        "path": path,
+    }
+    if "json" in kwargs:
+        body["body"] = kwargs["json"]
+    if "params" in kwargs:
+        body["query"] = {k: str(v) for k, v in kwargs["params"].items()}
+    return body
+
+
 async def _login() -> str:
     """Authenticate with Duplicati and cache the session token."""
     global _session_token
@@ -38,10 +51,23 @@ async def _login() -> str:
 
 
 async def _request(method: str, path: str, **kwargs: Any) -> httpx.Response:
-    """Make an authenticated request; re-login once on 401."""
+    """Route through vaultproxy if VAULT_PROXY_URL is set, else use direct session auth."""
+    timeout = float(os.environ.get("DUPLICATI_TIMEOUT", str(_DEFAULT_TIMEOUT)))
+    proxy_url = os.environ.get("VAULT_PROXY_URL")
+
+    if proxy_url:
+        # vaultproxy handles session login + token refresh internally
+        caller_id = os.environ.get("VAULT_PROXY_CALLER_ID", "mcp-duplicati")
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            return await client.post(
+                f"{proxy_url}/proxy",
+                json=_build_proxy_body(method, path, **kwargs),
+                headers={"X-Caller-Id": caller_id},
+            )
+
+    # Direct mode: manage session token ourselves
     global _session_token
     host = os.environ.get("DUPLICATI_HOST", _DEFAULT_HOST)
-    timeout = float(os.environ.get("DUPLICATI_TIMEOUT", str(_DEFAULT_TIMEOUT)))
     if _session_token is None:
         await _login()
     async with httpx.AsyncClient(timeout=timeout) as client:
