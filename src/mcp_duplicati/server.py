@@ -155,8 +155,8 @@ async def get_backup(backup_id: str) -> dict:
 
 
 @mcp.tool()
-async def create_backup(name: str, source_paths: str, destination_url: str, passphrase: str = "", exclude_filters: str = "", repeat: str = "") -> dict:
-    """Create a new Duplicati backup job. source_paths: comma-separated local paths to back up. destination_url: Duplicati backend URL (e.g., 'file:///mnt/backup', 's3://bucket/path'). passphrase: optional AES-256 encryption key. exclude_filters: comma-separated glob patterns to exclude (e.g., '*.tmp,*.log,/proc/*'). repeat: optional schedule interval ('1D'=daily, '1W'=weekly, '12H'=every 12 hours, '30M'=every 30 minutes)."""
+async def create_backup(name: str, source_paths: str, destination_url: str, passphrase: str = "", exclude_filters: str = "", repeat: str = "", allowed_days: str = "") -> dict:
+    """Create a new Duplicati backup job. source_paths: comma-separated local paths to back up. destination_url: Duplicati backend URL (e.g., 'file:///mnt/backup', 's3://bucket/path'). passphrase: optional AES-256 encryption key. exclude_filters: comma-separated glob patterns to exclude (e.g., '*.tmp,*.log,/proc/*'). repeat: optional schedule interval ('1D'=daily, '1W'=weekly, '12H'=every 12 hours, '30M'=every 30 minutes). allowed_days: comma-separated days to restrict schedule to (e.g., 'mon,wed,fri'); requires repeat."""
     if not name or not name.strip():
         return {"error": "name must not be empty", "tool": "create_backup"}
     name = name.strip()
@@ -175,6 +175,8 @@ async def create_backup(name: str, source_paths: str, destination_url: str, pass
         for pattern in [p.strip() for p in exclude_filters.split(",") if p.strip()]:
             filters.append({"Order": len(filters), "Include": False, "Expression": pattern})
     schedule = None
+    if allowed_days and allowed_days.strip() and not (repeat and repeat.strip()):
+        return {"error": "allowed_days requires repeat to also be specified", "tool": "create_backup"}
     if repeat and repeat.strip():
         r = repeat.strip().upper()
         if not re.match(r'^\d+[SMHDW]$', r):
@@ -183,6 +185,13 @@ async def create_backup(name: str, source_paths: str, destination_url: str, pass
             "Repeat": r,
             "Time": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
+        if allowed_days and allowed_days.strip():
+            _valid_days = {"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
+            day_list = [d.strip().lower() for d in allowed_days.split(",") if d.strip()]
+            invalid = [d for d in day_list if d not in _valid_days]
+            if invalid:
+                return {"error": f"Invalid allowed_days values: {invalid}. Use: mon,tue,wed,thu,fri,sat,sun", "tool": "create_backup"}
+            schedule["AllowedDays"] = day_list
     config = {
         "Backup": {
             "Name": name,
@@ -209,13 +218,25 @@ async def update_backup(
     destination_url: str = "",
     passphrase: str = "",
     exclude_filters: str = "",
+    repeat: str = "",
+    allowed_days: str = "",
 ) -> dict:
-    """Update an existing backup job. Only non-empty fields are changed. Fetches current config, applies changes, then PUTs the updated config. exclude_filters: comma-separated glob patterns to exclude (replaces existing filters; omit to keep current filters)."""
+    """Update an existing backup job. Only non-empty fields are changed. Fetches current config, applies changes, then PUTs the updated config. exclude_filters: comma-separated glob patterns to exclude (replaces existing filters; omit to keep current filters). repeat: update schedule interval ('1D', '1W', '12H', etc.). allowed_days: comma-separated days to restrict schedule to ('mon,tue,...,sun')."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "update_backup"}
     backup_id = backup_id.strip()
-    if not any([name, source_paths, destination_url, passphrase, exclude_filters]):
+    if not any([name, source_paths, destination_url, passphrase, exclude_filters, repeat, allowed_days]):
         return {"error": "At least one field to update must be specified", "tool": "update_backup"}
+    if repeat and repeat.strip():
+        r = repeat.strip().upper()
+        if not re.match(r'^\d+[SMHDW]$', r):
+            return {"error": f"Invalid repeat format '{r}'. Expected number + unit: S, M, H, D, W. E.g. '1D', '12H'.", "tool": "update_backup"}
+    if allowed_days and allowed_days.strip():
+        _valid_days = {"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
+        day_list = [d.strip().lower() for d in allowed_days.split(",") if d.strip()]
+        invalid = [d for d in day_list if d not in _valid_days]
+        if invalid:
+            return {"error": f"Invalid allowed_days values: {invalid}. Use: mon,tue,wed,thu,fri,sat,sun", "tool": "update_backup"}
     try:
         resp = await _request("GET", f"/api/v1/backup/{backup_id}")
         resp.raise_for_status()
@@ -236,6 +257,17 @@ async def update_backup(
         if exclude_filters:
             patterns = [p.strip() for p in exclude_filters.split(",") if p.strip()]
             backup["Filters"] = [{"Order": i, "Include": False, "Expression": p} for i, p in enumerate(patterns)]
+        if repeat and repeat.strip():
+            schedule = current.get("Schedule") or {}
+            schedule["Repeat"] = repeat.strip().upper()
+            if not schedule.get("Time"):
+                schedule["Time"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            current["Schedule"] = schedule
+        if allowed_days and allowed_days.strip():
+            schedule = current.get("Schedule") or {}
+            day_list = [d.strip().lower() for d in allowed_days.split(",") if d.strip()]
+            schedule["AllowedDays"] = day_list
+            current["Schedule"] = schedule
 
         put_resp = await _request("PUT", f"/api/v1/backup/{backup_id}", json=current)
         put_resp.raise_for_status()
