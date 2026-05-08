@@ -148,6 +148,19 @@ async def abort_backup(backup_id: str) -> dict:
 
 
 @mcp.tool()
+async def delete_backup(backup_id: str) -> dict:
+    """Delete a backup job configuration. NOTE: removes the job definition only — existing backup data on the destination is not deleted."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "delete_backup"}
+    try:
+        resp = await _request("DELETE", f"/api/v1/backup/{backup_id}")
+        resp.raise_for_status()
+        return {"result": {"backup_id": backup_id, "deleted": True}}
+    except Exception as e:
+        return {"error": str(e), "tool": "delete_backup", "detail": type(e).__name__}
+
+
+@mcp.tool()
 async def progress() -> dict:
     """Get current progress of any active backup or restore operation."""
     try:
