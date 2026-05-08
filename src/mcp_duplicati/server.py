@@ -100,11 +100,18 @@ async def _request(method: str, path: str, **kwargs: Any) -> httpx.Response:
 
 @mcp.tool()
 async def server_info() -> dict:
-    """Get Duplicati server version and current state."""
+    """Get Duplicati server version, OS type, and server time. For full runtime state (scheduler status, active tasks, pause state), use get_server_state instead."""
     try:
         resp = await _request("GET", "/api/v1/serverstate")
         resp.raise_for_status()
-        return {"result": resp.json()}
+        data = resp.json()
+        return {"result": {
+            "version": data.get("Version"),
+            "package_build_date": data.get("PackageBuildDate"),
+            "server_version": data.get("ServerVersion"),
+            "os": data.get("OSType"),
+            "server_time": data.get("ServerTime"),
+        }}
     except Exception as e:
         return _err(e, "server_info")
 
@@ -122,13 +129,26 @@ async def list_backups() -> dict:
 
 @mcp.tool()
 async def backup_status(backup_id: str) -> dict:
-    """Get detailed status of a specific backup job including destination, settings, and schedule."""
+    """Get operational status of a backup job: last run time, last result, next scheduled run, and source size metrics. For the full job configuration (source paths, filters, settings), use get_backup instead."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "backup_status"}
     try:
         resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}")
         resp.raise_for_status()
-        return {"result": resp.json()}
+        data = resp.json()
+        backup = data.get("Backup", data)
+        schedule = data.get("Schedule") or {}
+        metadata = backup.get("Metadata") or {}
+        return {"result": {
+            "backup_id": backup_id.strip(),
+            "name": backup.get("Name"),
+            "last_run": metadata.get("LastBackupDate"),
+            "last_result": metadata.get("LastBackupResult"),
+            "source_files_count": metadata.get("SourceFilesCount"),
+            "source_size_bytes": metadata.get("SourceFilesSize"),
+            "next_run": schedule.get("Time") if schedule else None,
+            "schedule_repeat": schedule.get("Repeat") if schedule else None,
+        }}
     except Exception as e:
         return _err(e, "backup_status")
 
