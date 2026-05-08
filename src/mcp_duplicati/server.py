@@ -56,7 +56,6 @@ async def _request(method: str, path: str, **kwargs: Any) -> httpx.Response:
     proxy_url = os.environ.get("VAULT_PROXY_URL")
 
     if proxy_url:
-        # vaultproxy handles session login + token refresh internally
         caller_id = os.environ.get("VAULT_PROXY_CALLER_ID", "mcp-duplicati")
         async with httpx.AsyncClient(timeout=timeout) as client:
             return await client.post(
@@ -65,7 +64,6 @@ async def _request(method: str, path: str, **kwargs: Any) -> httpx.Response:
                 headers={"X-Caller-Id": caller_id},
             )
 
-    # Direct mode: manage session token ourselves
     global _session_token
     host = os.environ.get("DUPLICATI_HOST", _DEFAULT_HOST)
     if _session_token is None:
@@ -113,6 +111,8 @@ async def list_backups() -> dict:
 @mcp.tool()
 async def backup_status(backup_id: str) -> dict:
     """Get detailed status of a specific backup job."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "backup_status"}
     try:
         resp = await _request("GET", f"/api/v1/backup/{backup_id}")
         resp.raise_for_status()
@@ -124,12 +124,27 @@ async def backup_status(backup_id: str) -> dict:
 @mcp.tool()
 async def run_backup(backup_id: str) -> dict:
     """Trigger a backup job to run immediately."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "run_backup"}
     try:
         resp = await _request("POST", f"/api/v1/backup/{backup_id}/run")
         resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "triggered": True}}
     except Exception as e:
         return {"error": str(e), "tool": "run_backup", "detail": type(e).__name__}
+
+
+@mcp.tool()
+async def abort_backup(backup_id: str) -> dict:
+    """Abort a currently running backup job."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "abort_backup"}
+    try:
+        resp = await _request("POST", f"/api/v1/backup/{backup_id}/abort")
+        resp.raise_for_status()
+        return {"result": {"backup_id": backup_id, "aborted": True}}
+    except Exception as e:
+        return {"error": str(e), "tool": "abort_backup", "detail": type(e).__name__}
 
 
 @mcp.tool()
@@ -146,6 +161,8 @@ async def progress() -> dict:
 @mcp.tool()
 async def list_versions(backup_id: str) -> dict:
     """List available restore points (filesets) for a backup job."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "list_versions"}
     try:
         resp = await _request("GET", f"/api/v1/backup/{backup_id}/filesets")
         resp.raise_for_status()
@@ -182,15 +199,16 @@ async def resume() -> dict:
 
 
 @mcp.tool()
-async def get_logs(backup_id: str | None = None, page_size: int = 20) -> dict:
-    """Retrieve recent log entries. backup_id: optional, filters to a specific job. page_size: 1–500."""
+async def get_logs(backup_id: str | None = None, page_size: int = 20, page: int = 0) -> dict:
+    """Retrieve log entries. backup_id: optional job filter. page_size: 1–500. page: 0-based page offset for pagination."""
     page_size = min(max(1, page_size), 500)
+    page = max(0, page)
     try:
         if backup_id is not None:
             path = f"/api/v1/backup/{backup_id}/log"
         else:
             path = "/api/v1/logdata/log"
-        resp = await _request("GET", path, params={"pagesize": page_size})
+        resp = await _request("GET", path, params={"pagesize": page_size, "page": page})
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
