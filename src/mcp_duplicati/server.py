@@ -126,7 +126,7 @@ async def backup_status(backup_id: str) -> dict:
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "backup_status"}
     try:
-        resp = await _request("GET", f"/api/v1/backup/{backup_id}")
+        resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}")
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
@@ -230,9 +230,9 @@ async def delete_backup(backup_id: str) -> dict:
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "delete_backup"}
     try:
-        resp = await _request("DELETE", f"/api/v1/backup/{backup_id}")
+        resp = await _request("DELETE", f"/api/v1/backup/{backup_id.strip()}")
         resp.raise_for_status()
-        return {"result": {"backup_id": backup_id, "deleted": True}}
+        return {"result": {"backup_id": backup_id.strip(), "deleted": True}}
     except Exception as e:
         return _err(e, "delete_backup")
 
@@ -260,7 +260,7 @@ async def export_backup_config(backup_id: str) -> dict:
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "export_backup_config"}
     try:
-        resp = await _request("GET", f"/api/v1/backup/{backup_id}/export")
+        resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}/export")
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
@@ -275,7 +275,7 @@ async def get_backup_commandline(backup_id: str) -> dict:
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "get_backup_commandline"}
     try:
-        resp = await _request("GET", f"/api/v1/backup/{backup_id}/commandline")
+        resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}/commandline")
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
@@ -288,9 +288,9 @@ async def run_backup(backup_id: str) -> dict:
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "run_backup"}
     try:
-        resp = await _request("POST", f"/api/v1/backup/{backup_id}/run")
+        resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/run")
         resp.raise_for_status()
-        return {"result": {"backup_id": backup_id, "triggered": True}}
+        return {"result": {"backup_id": backup_id.strip(), "triggered": True}}
     except Exception as e:
         return _err(e, "run_backup")
 
@@ -301,9 +301,9 @@ async def abort_backup(backup_id: str) -> dict:
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "abort_backup"}
     try:
-        resp = await _request("POST", f"/api/v1/backup/{backup_id}/abort")
+        resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/abort")
         resp.raise_for_status()
-        return {"result": {"backup_id": backup_id, "aborted": True}}
+        return {"result": {"backup_id": backup_id.strip(), "aborted": True}}
     except Exception as e:
         return _err(e, "abort_backup")
 
@@ -314,9 +314,9 @@ async def repair_backup(backup_id: str) -> dict:
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "repair_backup"}
     try:
-        resp = await _request("POST", f"/api/v1/backup/{backup_id}/repair")
+        resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/repair")
         resp.raise_for_status()
-        return {"result": {"backup_id": backup_id, "repair_started": True}}
+        return {"result": {"backup_id": backup_id.strip(), "repair_started": True}}
     except Exception as e:
         return _err(e, "repair_backup")
 
@@ -327,9 +327,9 @@ async def compact_backup(backup_id: str) -> dict:
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "compact_backup"}
     try:
-        resp = await _request("POST", f"/api/v1/backup/{backup_id}/compact")
+        resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/compact")
         resp.raise_for_status()
-        return {"result": {"backup_id": backup_id, "compact_started": True}}
+        return {"result": {"backup_id": backup_id.strip(), "compact_started": True}}
     except Exception as e:
         return _err(e, "compact_backup")
 
@@ -340,9 +340,9 @@ async def verify_backup(backup_id: str) -> dict:
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "verify_backup"}
     try:
-        resp = await _request("POST", f"/api/v1/backup/{backup_id}/verify")
+        resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/verify")
         resp.raise_for_status()
-        return {"result": {"backup_id": backup_id, "verify_started": True}}
+        return {"result": {"backup_id": backup_id.strip(), "verify_started": True}}
     except Exception as e:
         return _err(e, "verify_backup")
 
@@ -364,7 +364,7 @@ async def list_versions(backup_id: str) -> dict:
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "list_versions"}
     try:
-        resp = await _request("GET", f"/api/v1/backup/{backup_id}/filesets")
+        resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}/filesets")
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
@@ -488,7 +488,7 @@ async def get_logs(backup_id: str = "", page_size: int = 20, page: int = 0, leve
     try:
         params: dict = {"pagesize": page_size, "page": page}
         if backup_id and backup_id.strip():
-            path = f"/api/v1/backup/{backup_id}/log"
+            path = f"/api/v1/backup/{backup_id.strip()}/log"
             if level:
                 params["level"] = level
         else:
@@ -545,9 +545,9 @@ async def dismiss_notification(notification_id: str) -> dict:
     if not notification_id or not notification_id.strip():
         return {"error": "notification_id must not be empty", "tool": "dismiss_notification"}
     try:
-        resp = await _request("DELETE", f"/api/v1/notification/{notification_id}")
+        resp = await _request("DELETE", f"/api/v1/notification/{notification_id.strip()}")
         resp.raise_for_status()
-        return {"result": {"notification_id": notification_id, "dismissed": True}}
+        return {"result": {"notification_id": notification_id.strip(), "dismissed": True}}
     except Exception as e:
         return _err(e, "dismiss_notification")
 
