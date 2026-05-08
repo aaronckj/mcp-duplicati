@@ -705,6 +705,24 @@ async def get_server_setting(key: str) -> dict:
         return _err(e, "get_server_setting")
 
 
+@mcp.tool()
+async def test_connection(destination_url: str) -> dict:
+    """Test connectivity to a Duplicati backup destination URL without running a backup. Verifies credentials, permissions, and reachability. destination_url: Duplicati backend URL (e.g., 's3://bucket/path', 'file:///mnt/backup', 'ftp://host/path'). Returns success/failure and any error details."""
+    if not destination_url or not destination_url.strip():
+        return {"error": "destination_url must not be empty", "tool": "test_connection"}
+    try:
+        resp = await _request(
+            "POST",
+            "/api/v1/remoteoperation/test",
+            json={"uri": destination_url.strip()},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return {"result": {"destination_url": destination_url.strip(), "success": True, "response": data}}
+    except Exception as e:
+        return _err(e, "test_connection")
+
+
 def main() -> None:
     mcp.run()
 
