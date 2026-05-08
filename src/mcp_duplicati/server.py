@@ -875,9 +875,9 @@ async def dismiss_notification(notification_id: str) -> dict:
 
 @mcp.tool()
 async def get_system_info() -> dict:
-    """Get Duplicati system information: machine name, configuration directory, log directory, temporary directory, database path, default settings, and installed backend/encryption modules. Useful for verifying the Duplicati installation and locating config files."""
+    """Get Duplicati server settings: all persistent server-level configuration values (UI theme, update channel, allowed hostnames, startup delay, log level, etc.). Useful for inspecting server configuration. To update settings use update_server_settings."""
     try:
-        resp = await _request("GET", "/api/v1/systeminfo")
+        resp = await _request("GET", "/api/v1/serversettings")
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
