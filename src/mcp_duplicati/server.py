@@ -654,22 +654,21 @@ async def is_backup_active(backup_id: str) -> dict:
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "is_backup_active"}
     backup_id = backup_id.strip()
-    bid = backup_id
     try:
         resp = await _request("GET", "/api/v1/tasks")
         resp.raise_for_status()
         tasks_raw = resp.json()
         tasks = tasks_raw if isinstance(tasks_raw, list) else []
-        matching = [t for t in tasks if str(t.get("BackupID", "")) == bid or str(t.get("Backup", {}).get("ID", "")) == bid]
+        matching = [t for t in tasks if str(t.get("BackupID", "")) == backup_id or str(t.get("Backup", {}).get("ID", "")) == backup_id]
         if matching:
             task = matching[0]
-            return {"result": {"backup_id": bid, "active": True, "task_id": task.get("ID"), "task_type": task.get("Operation", task.get("TaskType", ""))}}
+            return {"result": {"backup_id": backup_id, "active": True, "task_id": task.get("ID"), "task_type": task.get("Operation", task.get("TaskType", ""))}}
         prog_resp = await _request("GET", "/api/v1/progressstate")
         if prog_resp.status_code == 200:
             prog = prog_resp.json()
-            if str(prog.get("BackupID", "")) == bid and prog.get("Phase", "") not in {"", "Backup_Complete", "Error"}:
-                return {"result": {"backup_id": bid, "active": True, "phase": prog.get("Phase")}}
-        return {"result": {"backup_id": bid, "active": False}}
+            if str(prog.get("BackupID", "")) == backup_id and prog.get("Phase", "") not in {"", "Backup_Complete", "Error"}:
+                return {"result": {"backup_id": backup_id, "active": True, "phase": prog.get("Phase")}}
+        return {"result": {"backup_id": backup_id, "active": False}}
     except Exception as e:
         return _err(e, "is_backup_active")
 
@@ -728,6 +727,20 @@ async def test_connection(destination_url: str) -> dict:
         return {"result": {"destination_url": destination_url, "success": True, "response": data}}
     except Exception as e:
         return _err(e, "test_connection")
+
+
+@mcp.tool()
+async def clear_logs(backup_id: str = "") -> dict:
+    """Clear Duplicati log entries. backup_id: optional — if provided, clears only that backup job's logs; leave empty to clear all server-wide logs."""
+    try:
+        if backup_id and backup_id.strip():
+            resp = await _request("DELETE", f"/api/v1/backup/{backup_id.strip()}/log")
+        else:
+            resp = await _request("DELETE", "/api/v1/logdata/log")
+        resp.raise_for_status()
+        return {"result": {"cleared": True, "backup_id": backup_id.strip() if backup_id and backup_id.strip() else None}}
+    except Exception as e:
+        return _err(e, "clear_logs")
 
 
 @mcp.tool()
