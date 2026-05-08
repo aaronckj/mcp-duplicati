@@ -510,7 +510,7 @@ async def restore_files(backup_id: str, restore_path: str, source_path: str = ""
         return {"error": f"Invalid restore_time '{rt}'. Use 'latest' or an ISO timestamp (e.g. '2024-01-15T10:30:00Z').", "tool": "restore_files", "backup_id": backup_id}
     try:
         payload: dict = {
-            "targetpath": restore_path,
+            "restore-path": restore_path,
             "time": rt,
         }
         if source_path and source_path.strip():
@@ -577,7 +577,7 @@ async def stop_task(task_id: int) -> dict:
 
 @mcp.tool()
 async def pause(duration: int = 0) -> dict:
-    """Pause the Duplicati scheduler. duration: optional number of seconds to pause (0 = indefinite, converted to HH:MM:SS for Duplicati API)."""
+    """Pause the Duplicati scheduler. duration: optional number of seconds to pause (0 = indefinite). Uses Duplicati timespan shorthand format (e.g. '1h30m')."""
     if duration < 0:
         return {"error": "duration must be a non-negative number of seconds", "tool": "pause"}
     if duration > 604800:
@@ -587,7 +587,14 @@ async def pause(duration: int = 0) -> dict:
         if duration > 0:
             h, rem = divmod(int(duration), 3600)
             m, s = divmod(rem, 60)
-            params["duration"] = f"{h:02d}:{m:02d}:{s:02d}"
+            parts = []
+            if h:
+                parts.append(f"{h}h")
+            if m:
+                parts.append(f"{m}m")
+            if s or not parts:
+                parts.append(f"{s}s")
+            params["duration"] = "".join(parts)
         resp = await _request("POST", "/api/v1/serverstate/pause", params=params)
         resp.raise_for_status()
         return {"result": {"paused": True, "duration": duration if duration > 0 else None}}
