@@ -344,7 +344,8 @@ async def export_backup_config(backup_id: str, include_all_options: bool = False
             params["all-options"] = "true"
         resp = await _request("GET", f"/api/v1/backup/{backup_id}/export", params=params if params else None)
         resp.raise_for_status()
-        return {"result": resp.json()}
+        parsed = resp.json()
+        return {"result": parsed, "config_json": json.dumps(parsed)}
     except Exception as e:
         err = _err(e, "export_backup_config")
         err["backup_id"] = backup_id
@@ -1054,6 +1055,9 @@ async def get_backup_statistics(backup_id: str) -> dict:
             "last_duration": metadata.get("LastBackupDuration"),
             "last_backup": metadata.get("LastBackupDate"),
             "file_count": metadata.get("SourceFilesCount"),
+            "files_added": metadata.get("LastBackupAddedFiles"),
+            "files_modified": metadata.get("LastBackupModifiedFiles"),
+            "files_deleted": metadata.get("LastBackupDeletedFiles"),
         }}
     except Exception as e:
         err = _err(e, "get_backup_statistics")
