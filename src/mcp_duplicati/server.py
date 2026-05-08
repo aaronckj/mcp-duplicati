@@ -344,7 +344,9 @@ async def abort_backup(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "aborted": True}}
     except Exception as e:
-        return _err(e, "abort_backup")
+        err = _err(e, "abort_backup")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -626,7 +628,9 @@ async def get_backup_schedule(backup_id: str) -> dict:
         schedule = data.get("Schedule") or data.get("schedule")
         return {"result": {"backup_id": backup_id, "schedule": schedule}}
     except Exception as e:
-        return _err(e, "get_backup_schedule")
+        err = _err(e, "get_backup_schedule")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -664,7 +668,9 @@ async def set_backup_schedule(backup_id: str, repeat: str, time: str = "", allow
         put_resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "schedule": schedule}}
     except Exception as e:
-        return _err(e, "set_backup_schedule")
+        err = _err(e, "set_backup_schedule")
+        err["backup_id"] = backup_id
+        return err
 
 
 
@@ -1078,7 +1084,9 @@ async def add_backup_filter(backup_id: str, expression: str, include: bool = Fal
         put_resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "added": {"expression": expression, "include": include, "order": order}, "total_filters": len(filters)}}
     except Exception as e:
-        return _err(e, "add_backup_filter")
+        err = _err(e, "add_backup_filter")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -1107,7 +1115,9 @@ async def remove_backup_filter(backup_id: str, expression: str) -> dict:
         put_resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "removed": expression, "remaining_filters": len(filters)}}
     except Exception as e:
-        return _err(e, "remove_backup_filter")
+        err = _err(e, "remove_backup_filter")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -1124,7 +1134,9 @@ async def list_backup_filters(backup_id: str) -> dict:
         filters = sorted(backup.get("Filters") or [], key=lambda f: f.get("Order", 0))
         return {"result": {"backup_id": backup_id, "filters": filters, "total": len(filters)}}
     except Exception as e:
-        return _err(e, "list_backup_filters")
+        err = _err(e, "list_backup_filters")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -1159,7 +1171,9 @@ async def get_backup_report(backup_id: str) -> dict:
             "duration": metadata.get("LastBackupDuration"),
         }}
     except Exception as e:
-        return _err(e, "get_backup_report")
+        err = _err(e, "get_backup_report")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -1233,7 +1247,9 @@ async def get_backup_retention(backup_id: str) -> dict:
         retention = {s["Name"]: s.get("Value") for s in settings if s.get("Name") in retention_keys}
         return {"result": {"backup_id": backup_id, "retention": retention, "has_retention_policy": bool(retention)}}
     except Exception as e:
-        return _err(e, "get_backup_retention")
+        err = _err(e, "get_backup_retention")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -1274,7 +1290,9 @@ async def set_backup_retention(
         applied = {k: v for k, v in retention_map.items() if v}
         return {"result": {"backup_id": backup_id, "retention_applied": applied}}
     except Exception as e:
-        return _err(e, "set_backup_retention")
+        err = _err(e, "set_backup_retention")
+        err["backup_id"] = backup_id
+        return err
 
 
 def main() -> None:
