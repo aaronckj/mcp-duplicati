@@ -660,7 +660,7 @@ async def update_server_settings(key: str, value: str) -> dict:
         resp.raise_for_status()
         return {"result": {"updated": True, "key": key, "value": value.strip()}}
     except Exception as e:
-        return _err(e, "update_server_settings")
+        err = _err(e, "update_server_settings"); err["key"] = key; return err
 
 
 @mcp.tool()
@@ -1041,7 +1041,7 @@ async def get_backup_statistics(backup_id: str) -> dict:
         stats_resp = await _request("GET", f"/api/v1/backup/{backup_id}")
         stats_resp.raise_for_status()
         backup_info = stats_resp.json() or {}
-        settings = backup_info.get("Backup", {})
+        settings = backup_info.get("Backup", backup_info)
         return {"result": {
             "backup_id": backup_id,
             "name": settings.get("Name"),
