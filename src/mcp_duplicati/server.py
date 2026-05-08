@@ -724,7 +724,12 @@ async def test_connection(destination_url: str) -> dict:
             "/api/v1/remoteoperation/test",
             json={"uri": destination_url},
         )
-        resp.raise_for_status()
+        if not resp.is_success:
+            try:
+                body = resp.json()
+            except Exception:
+                body = resp.text[:500]
+            return {"result": {"destination_url": destination_url, "success": False, "error": body, "status_code": resp.status_code}}
         data = resp.json()
         return {"result": {"destination_url": destination_url, "success": True, "response": data}}
     except Exception as e:
