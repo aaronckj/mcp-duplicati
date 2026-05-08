@@ -147,8 +147,8 @@ async def get_backup(backup_id: str) -> dict:
 
 
 @mcp.tool()
-async def create_backup(name: str, source_paths: str, destination_url: str, passphrase: str = "") -> dict:
-    """Create a new Duplicati backup job. source_paths: comma-separated local paths to back up. destination_url: Duplicati backend URL (e.g., 'file:///mnt/backup', 's3://bucket/path'). passphrase: optional AES-256 encryption key."""
+async def create_backup(name: str, source_paths: str, destination_url: str, passphrase: str = "", exclude_filters: str = "") -> dict:
+    """Create a new Duplicati backup job. source_paths: comma-separated local paths to back up. destination_url: Duplicati backend URL (e.g., 'file:///mnt/backup', 's3://bucket/path'). passphrase: optional AES-256 encryption key. exclude_filters: comma-separated glob patterns to exclude (e.g., '*.tmp,*.log,/proc/*')."""
     if not name or not name.strip():
         return {"error": "name must not be empty", "tool": "create_backup"}
     if not source_paths or not source_paths.strip():
@@ -159,12 +159,16 @@ async def create_backup(name: str, source_paths: str, destination_url: str, pass
     settings: list[dict] = []
     if passphrase:
         settings.append({"Name": "passphrase", "Value": passphrase})
+    filters: list[dict] = []
+    if exclude_filters:
+        for pattern in [p.strip() for p in exclude_filters.split(",") if p.strip()]:
+            filters.append({"Order": len(filters), "Include": False, "Expression": pattern})
     config = {
         "Backup": {
             "Name": name,
             "Sources": sources,
             "Settings": settings,
-            "Filters": [],
+            "Filters": filters,
         },
         "Schedule": None,
         "Destinations": [destination_url],
@@ -602,13 +606,24 @@ async def set_backup_schedule(backup_id: str, repeat: str, time: str = "", allow
 
 @mcp.tool()
 async def is_backup_active(backup_id: str) -> dict:
-    """Check whether a backup job is currently running or queued. Returns an active boolean. Useful for polling before triggering a new run to avoid conflicts."""
+    """Check whether a backup job is currently running or queued. Queries the task list and filters by backup ID. Returns active boolean, task ID if running, and task type."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "is_backup_active"}
+    bid = backup_id.strip()
     try:
-        resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}/isactive")
+        resp = await _request("GET", "/api/v1/tasks")
         resp.raise_for_status()
-        return {"result": resp.json()}
+        tasks = resp.json() if isinstance(resp.json(), list) else []
+        matching = [t for t in tasks if str(t.get("BackupID", "")) == bid or str(t.get("Backup", {}).get("ID", "")) == bid]
+        if matching:
+            task = matching[0]
+            return {"result": {"backup_id": bid, "active": True, "task_id": task.get("ID"), "task_type": task.get("Operation", task.get("TaskType", ""))}}
+        prog_resp = await _request("GET", "/api/v1/progressstate")
+        if prog_resp.status_code == 200:
+            prog = prog_resp.json()
+            if str(prog.get("BackupID", "")) == bid and prog.get("Phase", "") not in {"", "Backup_Complete", "Error"}:
+                return {"result": {"backup_id": bid, "active": True, "phase": prog.get("Phase")}}
+        return {"result": {"backup_id": bid, "active": False}}
     except Exception as e:
         return _err(e, "is_backup_active")
 
