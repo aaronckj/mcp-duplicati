@@ -515,7 +515,7 @@ async def restore_files(backup_id: str, restore_path: str, source_path: str = ""
         return {"error": f"Invalid restore_time '{rt}'. Use 'latest' or an ISO timestamp (e.g. '2024-01-15T10:30:00Z').", "tool": "restore_files", "backup_id": backup_id}
     try:
         payload: dict = {
-            "restore-path": restore_path,
+            "restore_path": restore_path,
             "time": rt,
         }
         if source_path and source_path.strip():
@@ -636,7 +636,7 @@ async def get_logs(backup_id: str = "", page_size: int = 20, page: int = 0, leve
             params: dict = {"pagesize": page_size, "offset": page * page_size}
         else:
             path = "/api/v1/logdata/log"
-            params = {"pagesize": page_size, "page": page}
+            params = {"pagesize": page_size, "offset": page * page_size}
             if level:
                 params["level"] = level
         resp = await _request("GET", path, params=params)
@@ -1022,7 +1022,7 @@ async def create_remote_folder(destination_url: str) -> dict:
     if not destination_url or not destination_url.strip():
         return {"error": "destination_url must not be empty", "tool": "create_remote_folder"}
     try:
-        resp = await _request("POST", "/api/v1/remoteoperation/create", json={"url": destination_url.strip()})
+        resp = await _request("POST", "/api/v1/remoteoperation/create", params={"url": destination_url.strip()})
         resp.raise_for_status()
         return {"result": {"created": True, "destination_url": destination_url.strip()}}
     except Exception as e:
@@ -1069,7 +1069,7 @@ async def get_backup_statistics(backup_id: str) -> dict:
 async def send_test_notification() -> dict:
     """Send a test notification using the currently configured notification module (email, webhook, etc.). Use this to verify notification settings are working before relying on them for backup alerts."""
     try:
-        resp = await _request("POST", "/api/v1/notifications/test")
+        resp = await _request("POST", "/api/v1/notification/test")
         resp.raise_for_status()
         return {"result": resp.json() if resp.text.strip() else {"sent": True}}
     except Exception as e:
@@ -1270,7 +1270,8 @@ async def get_backup_report(backup_id: str) -> dict:
             "files_deleted": parsed_result.get("DeletedFiles"),
             "files_modified": parsed_result.get("ModifiedFiles"),
             "source_size_bytes": parsed_result.get("SizeOfExaminedFiles"),
-            "backup_size_bytes": parsed_result.get("SizeOfAddedFiles"),
+            "backup_size_bytes": parsed_result.get("SizeOfOpenedFiles"),
+            "added_size_bytes": parsed_result.get("SizeOfAddedFiles"),
             "errors": parsed_result.get("Errors") or [],
             "warnings": parsed_result.get("Warnings") or [],
             "duration": metadata.get("LastBackupDuration"),
