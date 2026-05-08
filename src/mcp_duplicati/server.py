@@ -1023,6 +1023,18 @@ async def vacuum_database(backup_id: str) -> dict:
         return _err(e, "vacuum_database")
 
 
+@mcp.tool()
+async def poll_operations(last_event_id: int = -1) -> dict:
+    """Poll for Duplicati server events since a given event ID. Returns the current server state and any new events (task starts/completions, errors, notifications). last_event_id: start from this event ID (-1 = only return current state without waiting). Use the returned 'last_event_id' in subsequent calls to get only new events."""
+    try:
+        params: dict = {"lasteventid": last_event_id, "lonpolltime": 0}
+        resp = await _request("GET", "/api/v1/serverstate", params=params)
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "poll_operations")
+
+
 def main() -> None:
     mcp.run()
 
