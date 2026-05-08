@@ -510,7 +510,7 @@ async def restore_files(backup_id: str, restore_path: str, source_path: str = ""
         return {"error": f"Invalid restore_time '{rt}'. Use 'latest' or an ISO timestamp (e.g. '2024-01-15T10:30:00Z').", "tool": "restore_files", "backup_id": backup_id}
     try:
         payload: dict = {
-            "restore-path": restore_path,
+            "targetpath": restore_path,
             "time": rt,
         }
         if source_path and source_path.strip():
@@ -871,17 +871,6 @@ async def dismiss_notification(notification_id: str) -> dict:
         err = _err(e, "dismiss_notification")
         err["notification_id"] = notification_id
         return err
-
-
-@mcp.tool()
-async def get_system_info() -> dict:
-    """Get Duplicati server settings: all persistent server-level configuration values (UI theme, update channel, allowed hostnames, startup delay, log level, etc.). Useful for inspecting server configuration. To update settings use update_server_settings."""
-    try:
-        resp = await _request("GET", "/api/v1/serversettings")
-        resp.raise_for_status()
-        return {"result": resp.json()}
-    except Exception as e:
-        return _err(e, "get_system_info")
 
 
 @mcp.tool()
