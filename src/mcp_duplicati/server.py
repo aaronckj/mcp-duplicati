@@ -1009,6 +1009,20 @@ async def get_backup_defaults() -> dict:
         return _err(e, "get_backup_defaults")
 
 
+@mcp.tool()
+async def vacuum_database(backup_id: str) -> dict:
+    """Run SQLite VACUUM on the local database for a backup job to reclaim disk space and optimize performance. Useful after large backup deletions or compactions. backup_id: backup job ID from list_backups."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "vacuum_database"}
+    backup_id = backup_id.strip()
+    try:
+        resp = await _request("POST", f"/api/v1/backup/{backup_id}/vacuum")
+        resp.raise_for_status()
+        return {"result": {"backup_id": backup_id, "vacuumed": True}}
+    except Exception as e:
+        return _err(e, "vacuum_database")
+
+
 def main() -> None:
     mcp.run()
 
