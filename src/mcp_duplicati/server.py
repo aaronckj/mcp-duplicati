@@ -811,7 +811,10 @@ async def clear_logs(backup_id: str = "") -> dict:
         resp.raise_for_status()
         return {"result": {"cleared": True, "backup_id": backup_id or None}}
     except Exception as e:
-        return _err(e, "clear_logs")
+        err = _err(e, "clear_logs")
+        if backup_id:
+            err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -1018,7 +1021,9 @@ async def get_backup_statistics(backup_id: str) -> dict:
             "file_count": settings.get("Metadata", {}).get("SourceFilesCount"),
         }}
     except Exception as e:
-        return _err(e, "get_backup_statistics")
+        err = _err(e, "get_backup_statistics")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
