@@ -282,6 +282,30 @@ async def get_server_settings() -> dict:
         return _err(e, "get_server_settings")
 
 
+@mcp.tool()
+async def list_notifications() -> dict:
+    """List all pending Duplicati notifications and alerts."""
+    try:
+        resp = await _request("GET", "/api/v1/notifications")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "list_notifications")
+
+
+@mcp.tool()
+async def dismiss_notification(notification_id: str) -> dict:
+    """Dismiss a Duplicati notification by ID."""
+    if not notification_id or not notification_id.strip():
+        return {"error": "notification_id must not be empty", "tool": "dismiss_notification"}
+    try:
+        resp = await _request("DELETE", f"/api/v1/notification/{notification_id}")
+        resp.raise_for_status()
+        return {"result": {"notification_id": notification_id, "dismissed": True}}
+    except Exception as e:
+        return _err(e, "dismiss_notification")
+
+
 def main() -> None:
     mcp.run()
 
