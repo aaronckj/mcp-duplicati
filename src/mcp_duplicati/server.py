@@ -224,15 +224,15 @@ async def update_backup(
 
         backup = current.get("Backup", current)
         if name:
-            backup["Name"] = name
+            backup["Name"] = name.strip()
         if source_paths:
             backup["Sources"] = [p.strip() for p in source_paths.split(",") if p.strip()]
         if destination_url:
-            backup["TargetURL"] = destination_url
+            backup["TargetURL"] = destination_url.strip()
         if passphrase:
             settings = backup.get("Settings", [])
             settings = [s for s in settings if s.get("Name") != "passphrase"]
-            settings.append({"Name": "passphrase", "Value": passphrase})
+            settings.append({"Name": "passphrase", "Value": passphrase.strip()})
             backup["Settings"] = settings
         if exclude_filters:
             patterns = [p.strip() for p in exclude_filters.split(",") if p.strip()]
@@ -686,6 +686,23 @@ async def delete_backup_schedule(backup_id: str) -> dict:
         return {"result": {"backup_id": backup_id.strip(), "schedule_removed": True}}
     except Exception as e:
         return _err(e, "delete_backup_schedule")
+
+
+@mcp.tool()
+async def get_server_setting(key: str) -> dict:
+    """Get a single Duplicati server-level setting by key. Returns the value for the requested key. Use get_server_settings to discover all available keys and their current values."""
+    if not key or not key.strip():
+        return {"error": "key must not be empty", "tool": "get_server_setting"}
+    try:
+        resp = await _request("GET", "/api/v1/serversettings")
+        resp.raise_for_status()
+        settings = resp.json()
+        k = key.strip()
+        if k not in settings:
+            return {"error": f"Setting '{k}' not found. Use get_server_settings to list valid keys.", "tool": "get_server_setting"}
+        return {"result": {"key": k, "value": settings[k]}}
+    except Exception as e:
+        return _err(e, "get_server_setting")
 
 
 def main() -> None:
