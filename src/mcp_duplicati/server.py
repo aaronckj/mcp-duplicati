@@ -1060,6 +1060,31 @@ async def abort_task(task_id: int) -> dict:
         return _err(e, "abort_task")
 
 
+@mcp.tool()
+async def add_backup_filter(backup_id: str, expression: str, include: bool = False) -> dict:
+    """Add a single include or exclude filter to an existing backup without replacing all existing filters. expression: glob pattern (e.g. '*.tmp', '[*.log]', '/path/to/exclude/**'). include: True to include matching files, False (default) to exclude them. Use list_backups to find backup IDs, get_backup to see current filters."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "add_backup_filter"}
+    if not expression or not expression.strip():
+        return {"error": "expression must not be empty", "tool": "add_backup_filter"}
+    backup_id = backup_id.strip()
+    expression = expression.strip()
+    try:
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}")
+        resp.raise_for_status()
+        current = resp.json()
+        backup = current.get("Backup", current)
+        filters = backup.get("Filters") or []
+        order = max((f.get("Order", 0) for f in filters), default=-1) + 1
+        filters.append({"Order": order, "Include": include, "Expression": expression})
+        backup["Filters"] = filters
+        put_resp = await _request("PUT", f"/api/v1/backup/{backup_id}", json=current)
+        put_resp.raise_for_status()
+        return {"result": {"backup_id": backup_id, "added": {"expression": expression, "include": include, "order": order}, "total_filters": len(filters)}}
+    except Exception as e:
+        return _err(e, "add_backup_filter")
+
+
 def main() -> None:
     mcp.run()
 
