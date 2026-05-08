@@ -265,6 +265,8 @@ async def update_backup(
             current["Schedule"] = schedule
         if allowed_days and allowed_days.strip():
             schedule = current.get("Schedule") or {}
+            if not schedule.get("Repeat") and not (repeat and repeat.strip()):
+                return {"error": "allowed_days requires a repeat interval — provide repeat or set a schedule first via set_backup_schedule", "tool": "update_backup"}
             day_list = [d.strip().lower() for d in allowed_days.split(",") if d.strip()]
             schedule["AllowedDays"] = day_list
             current["Schedule"] = schedule
@@ -609,7 +611,10 @@ async def get_logs(backup_id: str = "", page_size: int = 20, page: int = 0, leve
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
-        return _err(e, "get_logs")
+        err = _err(e, "get_logs")
+        if backup_id and backup_id.strip():
+            err["backup_id"] = backup_id.strip()
+        return err
 
 
 @mcp.tool()
