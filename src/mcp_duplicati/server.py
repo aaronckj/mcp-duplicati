@@ -731,13 +731,14 @@ async def test_connection(destination_url: str) -> dict:
 @mcp.tool()
 async def clear_logs(backup_id: str = "") -> dict:
     """Clear Duplicati log entries. backup_id: optional — if provided, clears only that backup job's logs; leave empty to clear all server-wide logs."""
+    backup_id = backup_id.strip() if backup_id else ""
     try:
-        if backup_id and backup_id.strip():
-            resp = await _request("DELETE", f"/api/v1/backup/{backup_id.strip()}/log")
+        if backup_id:
+            resp = await _request("DELETE", f"/api/v1/backup/{backup_id}/log")
         else:
             resp = await _request("DELETE", "/api/v1/logdata/log")
         resp.raise_for_status()
-        return {"result": {"cleared": True, "backup_id": backup_id.strip() if backup_id and backup_id.strip() else None}}
+        return {"result": {"cleared": True, "backup_id": backup_id or None}}
     except Exception as e:
         return _err(e, "clear_logs")
 
