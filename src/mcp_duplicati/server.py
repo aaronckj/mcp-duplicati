@@ -447,20 +447,14 @@ async def get_server_settings() -> dict:
 
 
 @mcp.tool()
-async def update_server_settings(settings: str) -> dict:
-    """Update Duplicati server-level settings. settings: JSON object with key-value pairs (e.g., \'{"startup-delay": "0", "max-upload-speed": "0"}\'). Get current keys via get_server_settings."""
-    if not settings or not settings.strip():
-        return {"error": "settings must not be empty", "tool": "update_server_settings"}
+async def update_server_settings(key: str, value: str) -> dict:
+    """Update a single Duplicati server-level setting. key: setting name (e.g., 'startup-delay', 'max-upload-speed', 'max-download-speed'). value: new setting value as a string. Use get_server_settings to discover available keys."""
+    if not key or not key.strip():
+        return {"error": "key must not be empty", "tool": "update_server_settings"}
     try:
-        parsed = json.loads(settings)
-    except json.JSONDecodeError as e:
-        return {"error": f"Invalid JSON: {e}", "tool": "update_server_settings"}
-    if not isinstance(parsed, dict):
-        return {"error": "settings must be a JSON object (key-value pairs)", "tool": "update_server_settings"}
-    try:
-        resp = await _request("PUT", "/api/v1/serversettings", json=parsed)
+        resp = await _request("PUT", "/api/v1/serversettings", json={key.strip(): value})
         resp.raise_for_status()
-        return {"result": {"updated": True, "keys": list(parsed.keys())}}
+        return {"result": {"updated": True, "key": key.strip(), "value": value}}
     except Exception as e:
         return _err(e, "update_server_settings")
 
