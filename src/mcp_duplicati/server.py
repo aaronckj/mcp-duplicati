@@ -133,6 +133,7 @@ async def backup_status(backup_id: str) -> dict:
     """Get operational status of a backup job: last run time, last result, next scheduled run, and source size metrics. For the full job configuration (source paths, filters, settings), use get_backup instead."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "backup_status"}
+    backup_id = backup_id.strip()
     try:
         resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}")
         resp.raise_for_status()
@@ -159,6 +160,7 @@ async def get_backup(backup_id: str) -> dict:
     """Get full configuration of a backup job including source paths, destination, schedule, and settings. Different from backup_status which only returns the last run statistics."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "get_backup"}
+    backup_id = backup_id.strip()
     try:
         resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}")
         resp.raise_for_status()
@@ -172,10 +174,13 @@ async def create_backup(name: str, source_paths: str, destination_url: str, pass
     """Create a new Duplicati backup job. source_paths: comma-separated local paths to back up. destination_url: Duplicati backend URL (e.g., 'file:///mnt/backup', 's3://bucket/path'). passphrase: optional AES-256 encryption key. exclude_filters: comma-separated glob patterns to exclude (e.g., '*.tmp,*.log,/proc/*')."""
     if not name or not name.strip():
         return {"error": "name must not be empty", "tool": "create_backup"}
+    name = name.strip()
     if not source_paths or not source_paths.strip():
         return {"error": "source_paths must not be empty", "tool": "create_backup"}
+    source_paths = source_paths.strip()
     if not destination_url or not destination_url.strip():
         return {"error": "destination_url must not be empty", "tool": "create_backup"}
+    destination_url = destination_url.strip()
     sources = [p.strip() for p in source_paths.split(",") if p.strip()]
     settings: list[dict] = []
     if passphrase:
@@ -214,6 +219,7 @@ async def update_backup(
     """Update an existing backup job. Only non-empty fields are changed. Fetches current config, applies changes, then PUTs the updated config. exclude_filters: comma-separated glob patterns to exclude (replaces existing filters; omit to keep current filters)."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "update_backup"}
+    backup_id = backup_id.strip()
     if not any([name, source_paths, destination_url, passphrase, exclude_filters]):
         return {"error": "At least one field to update must be specified", "tool": "update_backup"}
     try:
@@ -250,6 +256,7 @@ async def delete_backup(backup_id: str) -> dict:
     """Delete a backup job configuration. Does NOT delete backup data on the destination."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "delete_backup"}
+    backup_id = backup_id.strip()
     try:
         resp = await _request("DELETE", f"/api/v1/backup/{backup_id.strip()}")
         resp.raise_for_status()
@@ -263,6 +270,7 @@ async def import_backup_config(config_json: str) -> dict:
     """Import a backup job from a JSON config string. Use export_backup_config to get the correct format. The imported job will be created as a new backup job."""
     if not config_json or not config_json.strip():
         return {"error": "config_json must not be empty", "tool": "import_backup_config"}
+    config_json = config_json.strip()
     try:
         config = json.loads(config_json)
     except json.JSONDecodeError as e:
@@ -280,6 +288,7 @@ async def export_backup_config(backup_id: str) -> dict:
     """Export a backup job's full configuration as JSON. Use this to save/restore job definitions or migrate to another Duplicati instance."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "export_backup_config"}
+    backup_id = backup_id.strip()
     try:
         resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}/export")
         resp.raise_for_status()
@@ -295,6 +304,7 @@ async def get_backup_commandline(backup_id: str) -> dict:
     """Get the equivalent command-line invocation for a backup job. Useful for understanding settings, debugging, or running the backup outside Duplicati."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "get_backup_commandline"}
+    backup_id = backup_id.strip()
     try:
         resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}/commandline")
         resp.raise_for_status()
@@ -308,6 +318,7 @@ async def run_backup(backup_id: str) -> dict:
     """Trigger a backup job to run immediately."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "run_backup"}
+    backup_id = backup_id.strip()
     try:
         resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/run")
         resp.raise_for_status()
@@ -321,6 +332,7 @@ async def abort_backup(backup_id: str) -> dict:
     """Abort a currently running backup job."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "abort_backup"}
+    backup_id = backup_id.strip()
     try:
         resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/abort")
         resp.raise_for_status()
@@ -334,6 +346,7 @@ async def repair_backup(backup_id: str) -> dict:
     """Repair the local database for a backup job. Rebuilds index from destination."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "repair_backup"}
+    backup_id = backup_id.strip()
     try:
         resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/repair")
         resp.raise_for_status()
@@ -347,6 +360,7 @@ async def compact_backup(backup_id: str) -> dict:
     """Compact the backup destination: removes unused data blocks to reclaim storage space."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "compact_backup"}
+    backup_id = backup_id.strip()
     try:
         resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/compact")
         resp.raise_for_status()
@@ -360,6 +374,7 @@ async def verify_backup(backup_id: str) -> dict:
     """Verify backup integrity by comparing local database with actual data at the destination."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "verify_backup"}
+    backup_id = backup_id.strip()
     try:
         resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/verify")
         resp.raise_for_status()
@@ -384,6 +399,7 @@ async def list_versions(backup_id: str) -> dict:
     """List available restore points (filesets) for a backup job."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "list_versions"}
+    backup_id = backup_id.strip()
     try:
         resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}/filesets")
         resp.raise_for_status()
@@ -397,6 +413,7 @@ async def search_backup_files(backup_id: str, path_filter: str = "*", restore_ti
     """Search files within a backup version. path_filter: glob pattern (e.g., '*.pdf'). restore_time: 'latest' or ISO timestamp."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "search_backup_files"}
+    backup_id = backup_id.strip()
     try:
         resp = await _request(
             "GET",
@@ -414,8 +431,10 @@ async def restore_files(backup_id: str, restore_path: str, source_path: str = ""
     """Restore files from a backup to a local directory. restore_path: destination directory on this machine. source_path: optional comma-separated list of path filters within the backup (empty = restore all files). restore_time: 'latest' or ISO timestamp."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "restore_files"}
+    backup_id = backup_id.strip()
     if not restore_path or not restore_path.strip():
         return {"error": "restore_path must not be empty", "tool": "restore_files"}
+    restore_path = restore_path.strip()
     try:
         payload: dict = {
             "restore-path": restore_path.strip(),
@@ -459,6 +478,7 @@ async def get_task(task_id: str) -> dict:
     """Get details of a specific Duplicati task by its task ID. Returns task type, backup ID, and status. Use list_tasks to discover task IDs."""
     if not task_id or not task_id.strip():
         return {"error": "task_id must not be empty", "tool": "get_task"}
+    task_id = task_id.strip()
     try:
         resp = await _request("GET", f"/api/v1/task/{task_id.strip()}")
         resp.raise_for_status()
@@ -472,6 +492,7 @@ async def stop_task(task_id: str) -> dict:
     """Stop a queued or running Duplicati task by its task ID. Use list_tasks to find task IDs. Running backup tasks are cancelled; queued tasks are dequeued."""
     if not task_id or not task_id.strip():
         return {"error": "task_id must not be empty", "tool": "stop_task"}
+    task_id = task_id.strip()
     try:
         resp = await _request("DELETE", f"/api/v1/task/{task_id.strip()}")
         resp.raise_for_status()
@@ -554,6 +575,7 @@ async def update_server_settings(key: str, value: str) -> dict:
     """Update a single Duplicati server-level setting. key: setting name (e.g., 'startup-delay', 'max-upload-speed', 'max-download-speed'). value: new setting value as a string. Use get_server_settings to discover available keys."""
     if not key or not key.strip():
         return {"error": "key must not be empty", "tool": "update_server_settings"}
+    key = key.strip()
     try:
         resp = await _request("PUT", "/api/v1/serversettings", json={key.strip(): value.strip()})
         resp.raise_for_status()
@@ -578,6 +600,7 @@ async def dismiss_notification(notification_id: str) -> dict:
     """Dismiss a Duplicati notification by ID."""
     if not notification_id or not notification_id.strip():
         return {"error": "notification_id must not be empty", "tool": "dismiss_notification"}
+    notification_id = notification_id.strip()
     try:
         resp = await _request("DELETE", f"/api/v1/notification/{notification_id.strip()}")
         resp.raise_for_status()
@@ -605,6 +628,7 @@ async def get_backup_schedule(backup_id: str) -> dict:
     """Get the schedule for a backup job: next run time, repeat interval, and allowed days. Returns null schedule if no schedule is configured."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "get_backup_schedule"}
+    backup_id = backup_id.strip()
     try:
         resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}")
         resp.raise_for_status()
@@ -620,8 +644,10 @@ async def set_backup_schedule(backup_id: str, repeat: str, time: str = "", allow
     """Set or update the automatic schedule for a backup job. repeat: interval string ('1D' = daily, '1W' = weekly, '12H' = every 12 hours, '30M' = every 30 minutes). time: ISO 8601 datetime for next run (empty = now). allowed_days: comma-separated days to run on ('mon,tue,wed,thu,fri,sat,sun'). Fetches current config and PUTs updated version."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "set_backup_schedule"}
+    backup_id = backup_id.strip()
     if not repeat or not repeat.strip():
         return {"error": "repeat must not be empty (e.g. '1D', '1W', '12H')", "tool": "set_backup_schedule"}
+    repeat = repeat.strip()
     try:
         resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}")
         resp.raise_for_status()
@@ -655,6 +681,7 @@ async def is_backup_active(backup_id: str) -> dict:
     """Check whether a backup job is currently running or queued. Queries the task list and filters by backup ID. Returns active boolean, task ID if running, and task type."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "is_backup_active"}
+    backup_id = backup_id.strip()
     bid = backup_id.strip()
     try:
         resp = await _request("GET", "/api/v1/tasks")
@@ -681,6 +708,7 @@ async def delete_backup_schedule(backup_id: str) -> dict:
     """Remove the automatic schedule from a backup job so it only runs on-demand. Fetches current config, sets Schedule to null, and PUTs updated version. Pairs with set_backup_schedule."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "delete_backup_schedule"}
+    backup_id = backup_id.strip()
     try:
         resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}")
         resp.raise_for_status()
@@ -698,6 +726,7 @@ async def get_server_setting(key: str) -> dict:
     """Get a single Duplicati server-level setting by key. Returns the value for the requested key. Use get_server_settings to discover all available keys and their current values."""
     if not key or not key.strip():
         return {"error": "key must not be empty", "tool": "get_server_setting"}
+    key = key.strip()
     try:
         resp = await _request("GET", "/api/v1/serversettings")
         resp.raise_for_status()
@@ -715,6 +744,7 @@ async def test_connection(destination_url: str) -> dict:
     """Test connectivity to a Duplicati backup destination URL without running a backup. Verifies credentials, permissions, and reachability. destination_url: Duplicati backend URL (e.g., 's3://bucket/path', 'file:///mnt/backup', 'ftp://host/path'). Returns success/failure and any error details."""
     if not destination_url or not destination_url.strip():
         return {"error": "destination_url must not be empty", "tool": "test_connection"}
+    destination_url = destination_url.strip()
     try:
         resp = await _request(
             "POST",
