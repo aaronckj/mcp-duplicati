@@ -121,7 +121,7 @@ async def list_backups() -> dict:
 
 @mcp.tool()
 async def backup_status(backup_id: str) -> dict:
-    """Get detailed status of a specific backup job."""
+    """Get detailed status of a specific backup job including destination, settings, and schedule."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "backup_status"}
     try:
@@ -130,6 +130,37 @@ async def backup_status(backup_id: str) -> dict:
         return {"result": resp.json()}
     except Exception as e:
         return _err(e, "backup_status")
+
+
+@mcp.tool()
+async def create_backup(name: str, source_paths: str, destination_url: str, passphrase: str = "") -> dict:
+    """Create a new Duplicati backup job. source_paths: comma-separated local paths to back up. destination_url: Duplicati backend URL (e.g., 'file:///mnt/backup', 's3://bucket/path'). passphrase: optional AES-256 encryption key."""
+    if not name or not name.strip():
+        return {"error": "name must not be empty", "tool": "create_backup"}
+    if not source_paths or not source_paths.strip():
+        return {"error": "source_paths must not be empty", "tool": "create_backup"}
+    if not destination_url or not destination_url.strip():
+        return {"error": "destination_url must not be empty", "tool": "create_backup"}
+    sources = [p.strip() for p in source_paths.split(",") if p.strip()]
+    settings: list[dict] = []
+    if passphrase:
+        settings.append({"Name": "passphrase", "Value": passphrase})
+    config = {
+        "Backup": {
+            "Name": name,
+            "Sources": sources,
+            "Settings": settings,
+            "Filters": [],
+        },
+        "Schedule": None,
+        "Destinations": [destination_url],
+    }
+    try:
+        resp = await _request("POST", "/api/v1/backups", json=config)
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "create_backup")
 
 
 @mcp.tool()
@@ -169,6 +200,19 @@ async def delete_backup(backup_id: str) -> dict:
         return {"result": {"backup_id": backup_id, "deleted": True}}
     except Exception as e:
         return _err(e, "delete_backup")
+
+
+@mcp.tool()
+async def export_backup_config(backup_id: str) -> dict:
+    """Export a backup job's full configuration as JSON. Use this to save/restore job definitions or migrate to another Duplicati instance."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "export_backup_config"}
+    try:
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}/export")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "export_backup_config")
 
 
 @mcp.tool()
