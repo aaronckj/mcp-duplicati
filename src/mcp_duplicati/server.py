@@ -1035,6 +1035,28 @@ async def poll_operations(last_event_id: int = -1) -> dict:
         return _err(e, "poll_operations")
 
 
+@mcp.tool()
+async def list_notifications() -> dict:
+    """List all Duplicati system notifications (completed operations, errors, warnings). Returns message text, type, and timestamp for each notification."""
+    try:
+        resp = await _request("GET", "/api/v1/notifications")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "list_notifications")
+
+
+@mcp.tool()
+async def dismiss_notification(notification_id: int) -> dict:
+    """Dismiss (delete) a Duplicati notification by ID. Use list_notifications to find notification IDs."""
+    try:
+        resp = await _request("DELETE", f"/api/v1/notification/{notification_id}")
+        resp.raise_for_status()
+        return {"result": {"notification_id": notification_id, "dismissed": True}}
+    except Exception as e:
+        return _err(e, "dismiss_notification")
+
+
 def main() -> None:
     mcp.run()
 
