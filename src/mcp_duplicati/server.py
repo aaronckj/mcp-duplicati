@@ -487,10 +487,13 @@ async def restore_files(backup_id: str, restore_path: str, source_path: str = ""
     if not restore_path or not restore_path.strip():
         return {"error": "restore_path must not be empty", "tool": "restore_files"}
     restore_path = restore_path.strip()
+    rt = restore_time.strip() if restore_time and restore_time.strip() else "latest"
+    if rt != "latest" and not re.match(r'^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?', rt):
+        return {"error": f"Invalid restore_time '{rt}'. Use 'latest' or an ISO timestamp (e.g. '2024-01-15T10:30:00Z').", "tool": "restore_files", "backup_id": backup_id}
     try:
         payload: dict = {
             "restore-path": restore_path,
-            "time": restore_time.strip(),
+            "time": rt,
         }
         if source_path and source_path.strip():
             paths = [p.strip() for p in source_path.split(",") if p.strip()]
