@@ -1085,6 +1085,35 @@ async def add_backup_filter(backup_id: str, expression: str, include: bool = Fal
         return _err(e, "add_backup_filter")
 
 
+@mcp.tool()
+async def remove_backup_filter(backup_id: str, expression: str) -> dict:
+    """Remove a specific filter from a backup by its glob expression without affecting other filters. Use get_backup to list current filters. backup_id: from list_backups. expression: exact glob pattern to remove (e.g. '*.tmp')."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "remove_backup_filter"}
+    if not expression or not expression.strip():
+        return {"error": "expression must not be empty", "tool": "remove_backup_filter"}
+    backup_id = backup_id.strip()
+    expression = expression.strip()
+    try:
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}")
+        resp.raise_for_status()
+        current = resp.json()
+        backup = current.get("Backup", current)
+        filters = backup.get("Filters") or []
+        before = len(filters)
+        filters = [f for f in filters if f.get("Expression") != expression]
+        if len(filters) == before:
+            return {"error": f"No filter with expression '{expression}' found", "tool": "remove_backup_filter"}
+        for i, f in enumerate(filters):
+            f["Order"] = i
+        backup["Filters"] = filters
+        put_resp = await _request("PUT", f"/api/v1/backup/{backup_id}", json=current)
+        put_resp.raise_for_status()
+        return {"result": {"backup_id": backup_id, "removed": expression, "remaining_filters": len(filters)}}
+    except Exception as e:
+        return _err(e, "remove_backup_filter")
+
+
 def main() -> None:
     mcp.run()
 
