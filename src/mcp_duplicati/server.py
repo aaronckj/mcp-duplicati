@@ -527,6 +527,8 @@ async def pause(duration: int = 0) -> dict:
     """Pause the Duplicati scheduler. duration: optional number of seconds to pause (0 = indefinite, converted to HH:MM:SS for Duplicati API)."""
     if duration < 0:
         return {"error": "duration must be a non-negative number of seconds", "tool": "pause"}
+    if duration > 604800:
+        return {"error": "duration must be <= 604800 seconds (7 days)", "tool": "pause"}
     try:
         params: dict = {}
         if duration > 0:
