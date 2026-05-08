@@ -819,6 +819,28 @@ async def list_remote_volumes(backup_id: str) -> dict:
         return _err(e, "list_remote_volumes")
 
 
+@mcp.tool()
+async def list_encryption_modules() -> dict:
+    """List all encryption modules installed in Duplicati. Returns each module's key, display name, and configurable options. Useful when setting up new backup jobs to discover available encryption algorithms (AES-256, GPG, etc.)."""
+    try:
+        resp = await _request("GET", "/api/v1/encryptionmodules")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "list_encryption_modules")
+
+
+@mcp.tool()
+async def list_compression_modules() -> dict:
+    """List all compression modules installed in Duplicati. Returns each module's key, display name, and configurable options. Useful when setting up new backup jobs to discover available compression algorithms (zip, lzma, etc.)."""
+    try:
+        resp = await _request("GET", "/api/v1/compressionmodules")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "list_compression_modules")
+
+
 def main() -> None:
     mcp.run()
 
