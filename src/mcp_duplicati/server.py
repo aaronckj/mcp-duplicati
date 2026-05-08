@@ -634,7 +634,12 @@ async def set_backup_schedule(backup_id: str, repeat: str, time: str = "", allow
         elif not schedule.get("Time"):
             schedule["Time"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         if allowed_days and allowed_days.strip():
-            schedule["AllowedDays"] = [d.strip().lower() for d in allowed_days.split(",") if d.strip()]
+            _valid_days = {"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
+            day_list = [d.strip().lower() for d in allowed_days.split(",") if d.strip()]
+            invalid = [d for d in day_list if d not in _valid_days]
+            if invalid:
+                return {"error": f"Invalid allowed_days values: {invalid}. Use: mon,tue,wed,thu,fri,sat,sun", "tool": "set_backup_schedule"}
+            schedule["AllowedDays"] = day_list
 
         current["Schedule"] = schedule
         put_resp = await _request("PUT", f"/api/v1/backup/{backup_id.strip()}", json=current)
