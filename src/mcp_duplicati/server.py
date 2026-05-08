@@ -1132,12 +1132,14 @@ async def vacuum_database(backup_id: str) -> dict:
 
 
 @mcp.tool()
-async def poll_operations(last_event_id: int = -1) -> dict:
-    """Poll for Duplicati server events since a given event ID. Returns the current server state and any new events (task starts/completions, errors, notifications). last_event_id: start from this event ID (-1 = only return current state without waiting). Use the returned 'last_event_id' in subsequent calls to get only new events."""
+async def poll_operations(last_event_id: int = -1, longpoll_seconds: int = 0) -> dict:
+    """Poll for Duplicati server events since a given event ID. Returns the current server state and any new events (task starts/completions, errors, notifications). last_event_id: start from this event ID (-1 = only return current state without waiting). longpoll_seconds: 0-3600 — server waits up to this many seconds before returning (0 = immediate). Use the returned 'last_event_id' in subsequent calls to get only new events."""
     if last_event_id < -1:
         return {"error": "last_event_id must be -1 (initial poll) or a non-negative event ID from a previous poll", "tool": "poll_operations"}
+    if not 0 <= longpoll_seconds <= 3600:
+        return {"error": "longpoll_seconds must be 0-3600", "tool": "poll_operations"}
     try:
-        params: dict = {"lasteventid": last_event_id, "longpolltime": 0}
+        params: dict = {"lasteventid": last_event_id, "longpolltime": longpoll_seconds}
         resp = await _request("GET", "/api/v1/serverstate", params=params)
         resp.raise_for_status()
         return {"result": resp.json()}
@@ -1246,26 +1248,33 @@ async def get_backup_report(backup_id: str) -> dict:
     try:
         resp = await _request("GET", f"/api/v1/backup/{backup_id}/log", params={"pagesize": 1})
         resp.raise_for_status()
-        logs = resp.json()
+        logs = resp.json() or []
         status_resp = await _request("GET", f"/api/v1/backup/{backup_id}")
         status_resp.raise_for_status()
         status_data = status_resp.json()
         backup = status_data.get("Backup", status_data)
         metadata = backup.get("Metadata") or {}
+        latest_log = logs[0] if logs else {}
+        parsed_result: dict = {}
+        if latest_log.get("ParsedResult"):
+            try:
+                parsed_result = json.loads(latest_log["ParsedResult"])
+            except (json.JSONDecodeError, TypeError):
+                parsed_result = {}
         return {"result": {
             "backup_id": backup_id,
             "last_run": metadata.get("LastBackupDate"),
             "last_result": metadata.get("LastBackupResult"),
-            "files_examined": metadata.get("LastBackupFilesExamined"),
-            "files_added": metadata.get("LastBackupAddedFiles"),
-            "files_deleted": metadata.get("LastBackupDeletedFiles"),
-            "files_modified": metadata.get("LastBackupModifiedFiles"),
-            "source_size_bytes": metadata.get("SourceFilesSize"),
-            "backup_size_bytes": metadata.get("LastBackupSize"),
-            "errors": metadata.get("LastBackupErrors"),
-            "warnings": metadata.get("LastBackupWarnings"),
+            "files_examined": parsed_result.get("ExaminedFiles"),
+            "files_added": parsed_result.get("AddedFiles"),
+            "files_deleted": parsed_result.get("DeletedFiles"),
+            "files_modified": parsed_result.get("ModifiedFiles"),
+            "source_size_bytes": parsed_result.get("SizeOfExaminedFiles"),
+            "backup_size_bytes": parsed_result.get("SizeOfAddedFiles"),
+            "errors": parsed_result.get("Errors") or [],
+            "warnings": parsed_result.get("Warnings") or [],
             "duration": metadata.get("LastBackupDuration"),
-            "recent_log": logs,
+            "recent_log": latest_log,
         }}
     except Exception as e:
         err = _err(e, "get_backup_report")
