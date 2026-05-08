@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -619,7 +620,9 @@ async def set_backup_schedule(backup_id: str, repeat: str, time: str = "", allow
     backup_id = backup_id.strip()
     if not repeat or not repeat.strip():
         return {"error": "repeat must not be empty (e.g. '1D', '1W', '12H')", "tool": "set_backup_schedule"}
-    repeat = repeat.strip()
+    repeat = repeat.strip().upper()
+    if not re.match(r'^\d+[SMHDW]$', repeat):
+        return {"error": f"Invalid repeat format '{repeat}'. Expected number + unit: S (seconds), M (minutes), H (hours), D (days), W (weeks). E.g. '1D', '12H', '30M'.", "tool": "set_backup_schedule"}
     try:
         resp = await _request("GET", f"/api/v1/backup/{backup_id}")
         resp.raise_for_status()
