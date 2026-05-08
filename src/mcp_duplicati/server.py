@@ -959,6 +959,28 @@ async def get_backup_statistics(backup_id: str) -> dict:
         return _err(e, "get_backup_statistics")
 
 
+@mcp.tool()
+async def send_test_notification() -> dict:
+    """Send a test notification using the currently configured notification module (email, webhook, etc.). Use this to verify notification settings are working before relying on them for backup alerts."""
+    try:
+        resp = await _request("POST", "/api/v1/notifications/test")
+        resp.raise_for_status()
+        return {"result": resp.json() if resp.text.strip() else {"sent": True}}
+    except Exception as e:
+        return _err(e, "send_test_notification")
+
+
+@mcp.tool()
+async def get_ui_settings() -> dict:
+    """Get Duplicati web UI settings: language, startup wizard visibility, theme, and other interface preferences."""
+    try:
+        resp = await _request("GET", "/api/v1/uisettings")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "get_ui_settings")
+
+
 def main() -> None:
     mcp.run()
 
