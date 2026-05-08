@@ -1194,6 +1194,34 @@ async def move_backup_source(backup_id: str, old_path: str, new_path: str) -> di
         return _err(e, "move_backup_source")
 
 
+@mcp.tool()
+async def is_backup_overdue(backup_id: str, max_hours: float = 25.0) -> dict:
+    """Check if a backup job has not run within the expected interval. Returns overdue=True if the last successful run was more than max_hours ago, or if the backup has never run. max_hours: expected maximum hours between backups (default 25.0, slightly over 24h to account for scheduling drift)."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "is_backup_overdue"}
+    if max_hours <= 0:
+        return {"error": "max_hours must be greater than 0", "tool": "is_backup_overdue"}
+    backup_id = backup_id.strip()
+    try:
+        import datetime
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}")
+        resp.raise_for_status()
+        data = resp.json()
+        backup = data.get("Backup", data)
+        metadata = backup.get("Metadata") or {}
+        last_run_str = metadata.get("LastBackupDate")
+        last_result = metadata.get("LastBackupResult")
+        if not last_run_str:
+            return {"result": {"backup_id": backup_id, "overdue": True, "reason": "never_run", "last_run": None, "max_hours": max_hours}}
+        last_run = datetime.datetime.fromisoformat(last_run_str.replace("Z", "+00:00"))
+        now = datetime.datetime.now(datetime.timezone.utc)
+        hours_since = (now - last_run).total_seconds() / 3600
+        overdue = hours_since > max_hours
+        return {"result": {"backup_id": backup_id, "overdue": overdue, "hours_since_last_run": round(hours_since, 2), "last_run": last_run_str, "last_result": last_result, "max_hours": max_hours}}
+    except Exception as e:
+        return _err(e, "is_backup_overdue")
+
+
 def main() -> None:
     mcp.run()
 
