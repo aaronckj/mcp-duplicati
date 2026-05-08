@@ -994,7 +994,9 @@ async def list_sources(destination_url: str, path: str = "/") -> dict:
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
-        return _err(e, "list_sources")
+        err = _err(e, "list_sources")
+        err["destination_url"] = destination_url.strip()
+        return err
 
 
 @mcp.tool()
