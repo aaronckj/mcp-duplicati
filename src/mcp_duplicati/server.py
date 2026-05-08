@@ -245,6 +245,21 @@ async def export_backup_config(backup_id: str) -> dict:
         return _err(e, "export_backup_config")
 
 
+
+
+@mcp.tool()
+async def get_backup_commandline(backup_id: str) -> dict:
+    """Get the equivalent command-line invocation for a backup job. Useful for understanding settings, debugging, or running the backup outside Duplicati."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "get_backup_commandline"}
+    try:
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}/commandline")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "get_backup_commandline")
+
+
 @mcp.tool()
 async def run_backup(backup_id: str) -> dict:
     """Trigger a backup job to run immediately."""
@@ -429,6 +444,27 @@ async def get_server_settings() -> dict:
         return _err(e, "get_server_settings")
 
 
+
+
+@mcp.tool()
+async def update_server_settings(settings: str) -> dict:
+    """Update Duplicati server-level settings. settings: JSON object with key-value pairs (e.g., \'{"startup-delay": "0", "max-upload-speed": "0"}\'). Get current keys via get_server_settings."""
+    if not settings or not settings.strip():
+        return {"error": "settings must not be empty", "tool": "update_server_settings"}
+    try:
+        parsed = json.loads(settings)
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON: {e}", "tool": "update_server_settings"}
+    if not isinstance(parsed, dict):
+        return {"error": "settings must be a JSON object (key-value pairs)", "tool": "update_server_settings"}
+    try:
+        resp = await _request("PUT", "/api/v1/serversettings", json=parsed)
+        resp.raise_for_status()
+        return {"result": {"updated": True, "keys": list(parsed.keys())}}
+    except Exception as e:
+        return _err(e, "update_server_settings")
+
+
 @mcp.tool()
 async def list_notifications() -> dict:
     """List all pending Duplicati notifications and alerts."""
@@ -451,6 +487,19 @@ async def dismiss_notification(notification_id: str) -> dict:
         return {"result": {"notification_id": notification_id, "dismissed": True}}
     except Exception as e:
         return _err(e, "dismiss_notification")
+
+
+
+
+@mcp.tool()
+async def dismiss_all_notifications() -> dict:
+    """Dismiss all pending Duplicati notifications and alerts at once."""
+    try:
+        resp = await _request("DELETE", "/api/v1/notifications")
+        resp.raise_for_status()
+        return {"result": {"all_dismissed": True}}
+    except Exception as e:
+        return _err(e, "dismiss_all_notifications")
 
 
 def main() -> None:
