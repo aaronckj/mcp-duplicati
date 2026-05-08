@@ -1125,6 +1125,8 @@ async def poll_operations(last_event_id: int = -1) -> dict:
 @mcp.tool()
 async def abort_task(task_id: int) -> dict:
     """Abort a running Duplicati background task. task_id: task ID from poll_operations or backup operation responses. Returns immediately; use get_task to confirm termination."""
+    if task_id <= 0:
+        return {"error": "task_id must be a positive integer", "tool": "abort_task"}
     try:
         resp = await _request("POST", f"/api/v1/task/{task_id}/abort")
         resp.raise_for_status()
