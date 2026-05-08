@@ -379,7 +379,7 @@ async def search_backup_files(backup_id: str, path_filter: str = "*", restore_ti
     try:
         resp = await _request(
             "GET",
-            f"/api/v1/backup/{backup_id}/files",
+            f"/api/v1/backup/{backup_id.strip()}/files",
             params={"filter": path_filter, "time": restore_time},
         )
         resp.raise_for_status()
@@ -404,7 +404,7 @@ async def restore_files(backup_id: str, restore_path: str, source_path: str = ""
             paths = [p.strip() for p in source_path.split(",") if p.strip()]
             if paths:
                 payload["paths"] = paths
-        resp = await _request("POST", f"/api/v1/backup/{backup_id}/restore", json=payload)
+        resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/restore", json=payload)
         resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "restore_path": restore_path, "restore_started": True}}
     except Exception as e:
