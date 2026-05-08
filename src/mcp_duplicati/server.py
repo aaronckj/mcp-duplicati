@@ -553,8 +553,6 @@ async def get_logs(backup_id: str = "", page_size: int = 20, page: int = 0, leve
         params: dict = {"pagesize": page_size, "page": page}
         if backup_id and backup_id.strip():
             path = f"/api/v1/backup/{backup_id.strip()}/log"
-            if level:
-                params["level"] = level
         else:
             path = "/api/v1/logdata/log"
             if level:
