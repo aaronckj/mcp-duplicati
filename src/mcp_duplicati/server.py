@@ -102,18 +102,11 @@ async def _request(method: str, path: str, **kwargs: Any) -> httpx.Response:
 
 @mcp.tool()
 async def server_info() -> dict:
-    """Get Duplicati server version, OS type, and server time. For full runtime state (scheduler status, active tasks, pause state), use get_server_state instead."""
+    """Get Duplicati server state including version, OS type, program state, and server time. For normalized key access use fields: ServerVersion, OSType, ProgramState, ServerTime."""
     try:
         resp = await _request("GET", "/api/v1/serverstate")
         resp.raise_for_status()
-        data = resp.json()
-        return {"result": {
-            "version": data.get("Version"),
-            "package_build_date": data.get("PackageBuildDate"),
-            "server_version": data.get("ServerVersion"),
-            "os": data.get("OSType"),
-            "server_time": data.get("ServerTime"),
-        }}
+        return {"result": resp.json()}
     except Exception as e:
         return _err(e, "server_info")
 
@@ -131,27 +124,14 @@ async def list_backups() -> dict:
 
 @mcp.tool()
 async def backup_status(backup_id: str) -> dict:
-    """Get operational status of a backup job: last run time, last result, next scheduled run, and source size metrics. For the full job configuration (source paths, filters, settings), use get_backup instead."""
+    """Get full status of a backup job including Backup config, Schedule, and BackupStatistics. Returns the raw API response structure."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "backup_status"}
     backup_id = backup_id.strip()
     try:
         resp = await _request("GET", f"/api/v1/backup/{backup_id}")
         resp.raise_for_status()
-        data = resp.json()
-        backup = data.get("Backup", data)
-        schedule = data.get("Schedule") or {}
-        metadata = backup.get("Metadata") or {}
-        return {"result": {
-            "backup_id": backup_id,
-            "name": backup.get("Name"),
-            "last_run": metadata.get("LastBackupDate"),
-            "last_result": metadata.get("LastBackupResult"),
-            "source_files_count": metadata.get("SourceFilesCount"),
-            "source_size_bytes": metadata.get("SourceFilesSize"),
-            "next_run": schedule.get("Time") if schedule else None,
-            "schedule_repeat": schedule.get("Repeat") if schedule else None,
-        }}
+        return {"result": resp.json()}
     except Exception as e:
         return _err(e, "backup_status")
 
@@ -526,7 +506,7 @@ async def pause(duration: int = 0) -> dict:
             params["duration"] = f"{h:02d}:{m:02d}:{s:02d}"
         resp = await _request("POST", "/api/v1/serverstate/pause", params=params)
         resp.raise_for_status()
-        return {"result": {"paused": True, "duration": duration}}
+        return {"result": {"paused": True, "duration": duration if duration > 0 else None}}
     except Exception as e:
         return _err(e, "pause")
 
