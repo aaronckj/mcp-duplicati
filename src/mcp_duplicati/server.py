@@ -667,10 +667,10 @@ async def is_backup_active(backup_id: str) -> dict:
             task = matching[0]
             return {"result": {"backup_id": backup_id, "active": True, "task_id": task.get("ID"), "task_type": task.get("Operation", task.get("TaskType", ""))}}
         prog_resp = await _request("GET", "/api/v1/progressstate")
-        if prog_resp.status_code == 200:
-            prog = prog_resp.json()
-            if str(prog.get("BackupID", "")) == backup_id and prog.get("Phase", "") not in {"", "Backup_Complete", "Error"}:
-                return {"result": {"backup_id": backup_id, "active": True, "phase": prog.get("Phase")}}
+        prog_resp.raise_for_status()
+        prog = prog_resp.json()
+        if str(prog.get("BackupID", "")) == backup_id and prog.get("Phase", "") not in {"", "Backup_Complete", "Error"}:
+            return {"result": {"backup_id": backup_id, "active": True, "phase": prog.get("Phase")}}
         return {"result": {"backup_id": backup_id, "active": False}}
     except Exception as e:
         return _err(e, "is_backup_active")
