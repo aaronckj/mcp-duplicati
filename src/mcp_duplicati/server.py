@@ -758,6 +758,31 @@ async def test_connection(destination_url: str) -> dict:
         return _err(e, "test_connection")
 
 
+@mcp.tool()
+async def list_notifications() -> dict:
+    """List all pending Duplicati notifications — backup failures, warnings, and informational messages. Returns notification ID, type, message, and timestamp."""
+    try:
+        resp = await _request("GET", "/api/v1/notifications")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "list_notifications")
+
+
+@mcp.tool()
+async def dismiss_notification(notification_id: str) -> dict:
+    """Dismiss (acknowledge and delete) a Duplicati notification by ID. Use list_notifications to find notification IDs."""
+    if not notification_id or not notification_id.strip():
+        return {"error": "notification_id must not be empty", "tool": "dismiss_notification"}
+    notification_id = notification_id.strip()
+    try:
+        resp = await _request("DELETE", f"/api/v1/notification/{notification_id}")
+        resp.raise_for_status()
+        return {"result": {"notification_id": notification_id, "dismissed": True}}
+    except Exception as e:
+        return _err(e, "dismiss_notification")
+
+
 def main() -> None:
     mcp.run()
 
