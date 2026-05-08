@@ -124,14 +124,29 @@ async def list_backups() -> dict:
 
 @mcp.tool()
 async def backup_status(backup_id: str) -> dict:
-    """Get full status of a backup job including Backup config, Schedule, and BackupStatistics. Returns the raw API response structure."""
+    """Get run statistics for a backup job: last run result, files examined/added/modified/deleted, source and backup size, last duration, and next scheduled run. For the full configuration (sources, filters, settings), use get_backup instead."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "backup_status"}
     backup_id = backup_id.strip()
     try:
         resp = await _request("GET", f"/api/v1/backup/{backup_id}")
         resp.raise_for_status()
-        return {"result": resp.json()}
+        data = resp.json()
+        backup = data.get("Backup", data)
+        metadata = backup.get("Metadata") or {}
+        schedule = data.get("Schedule") or {}
+        return {"result": {
+            "backup_id": backup_id,
+            "name": backup.get("Name"),
+            "last_run": metadata.get("LastBackupDate"),
+            "last_result": metadata.get("LastBackupResult"),
+            "last_duration": metadata.get("LastBackupDuration"),
+            "source_files": metadata.get("SourceFilesCount"),
+            "source_size": metadata.get("SourceSizeString"),
+            "backup_size": metadata.get("BackupSizeString"),
+            "next_run": schedule.get("Time") if schedule.get("Repeat") else None,
+            "repeat": schedule.get("Repeat"),
+        }}
     except Exception as e:
         err = _err(e, "backup_status")
         err["backup_id"] = backup_id
@@ -1345,8 +1360,7 @@ async def set_backup_retention(
     if keep_versions < 0:
         return {"error": "keep_versions must be >= 0 (0 = unlimited)", "tool": "set_backup_retention"}
     if keep_time and keep_time.strip():
-        import re as _re_rt
-        if not _re_rt.match(r"^\d+[smhdwDWMY]$", keep_time.strip()):
+        if not re.match(r"^\d+[smhdwDWMY]$", keep_time.strip()):
             return {"error": "keep_time format must be a number followed by a unit: s(econds), m(inutes), h(ours), d/D(ays), W(eeks), M(onths), Y(ears) — e.g. '30D', '6M', '1Y'", "tool": "set_backup_retention"}
     backup_id = backup_id.strip()
     retention_map = {
