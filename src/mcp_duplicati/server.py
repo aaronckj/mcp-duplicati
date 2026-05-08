@@ -133,7 +133,9 @@ async def backup_status(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
-        return _err(e, "backup_status")
+        err = _err(e, "backup_status")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -316,7 +318,9 @@ async def run_backup(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "triggered": True}}
     except Exception as e:
-        return _err(e, "run_backup")
+        err = _err(e, "run_backup")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -397,7 +401,9 @@ async def list_versions(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
-        return _err(e, "list_versions")
+        err = _err(e, "list_versions")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -1172,7 +1178,6 @@ async def is_backup_overdue(backup_id: str, max_hours: float = 25.0) -> dict:
         return {"error": "max_hours must be greater than 0", "tool": "is_backup_overdue"}
     backup_id = backup_id.strip()
     try:
-        import datetime
         resp = await _request("GET", f"/api/v1/backup/{backup_id}")
         resp.raise_for_status()
         data = resp.json()
