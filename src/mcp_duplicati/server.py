@@ -1131,6 +1131,41 @@ async def list_backup_filters(backup_id: str) -> dict:
         return _err(e, "list_backup_filters")
 
 
+@mcp.tool()
+async def get_backup_report(backup_id: str) -> dict:
+    """Get the detailed report for the most recently completed backup run: files examined, added, deleted, modified, errors, warnings, duration, and start/end times. backup_id: from list_backups."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "get_backup_report"}
+    backup_id = backup_id.strip()
+    try:
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}/log?level=Information&pagesize=1")
+        if resp.status_code == 404:
+            resp = await _request("GET", f"/api/v1/backup/{backup_id}/log?pagesize=1")
+        resp.raise_for_status()
+        logs = resp.json()
+        status_resp = await _request("GET", f"/api/v1/backup/{backup_id}")
+        status_resp.raise_for_status()
+        status_data = status_resp.json()
+        backup = status_data.get("Backup", status_data)
+        metadata = backup.get("Metadata") or {}
+        return {"result": {
+            "backup_id": backup_id,
+            "last_run": metadata.get("LastBackupDate"),
+            "last_result": metadata.get("LastBackupResult"),
+            "files_examined": metadata.get("LastBackupFilesExamined"),
+            "files_added": metadata.get("LastBackupAddedFiles"),
+            "files_deleted": metadata.get("LastBackupDeletedFiles"),
+            "files_modified": metadata.get("LastBackupModifiedFiles"),
+            "source_size_bytes": metadata.get("SourceFilesSize"),
+            "backup_size_bytes": metadata.get("LastBackupSize"),
+            "errors": metadata.get("LastBackupErrors"),
+            "warnings": metadata.get("LastBackupWarnings"),
+            "duration": metadata.get("LastBackupDuration"),
+        }}
+    except Exception as e:
+        return _err(e, "get_backup_report")
+
+
 def main() -> None:
     mcp.run()
 
