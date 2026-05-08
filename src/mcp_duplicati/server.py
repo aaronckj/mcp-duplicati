@@ -134,6 +134,19 @@ async def backup_status(backup_id: str) -> dict:
 
 
 @mcp.tool()
+async def get_backup(backup_id: str) -> dict:
+    """Get full configuration of a backup job including source paths, destination, schedule, and settings. Different from backup_status which only returns the last run statistics."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "get_backup"}
+    try:
+        resp = await _request("GET", f"/api/v1/backup/{backup_id.strip()}")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "get_backup")
+
+
+@mcp.tool()
 async def create_backup(name: str, source_paths: str, destination_url: str, passphrase: str = "") -> dict:
     """Create a new Duplicati backup job. source_paths: comma-separated local paths to back up. destination_url: Duplicati backend URL (e.g., 'file:///mnt/backup', 's3://bucket/path'). passphrase: optional AES-256 encryption key."""
     if not name or not name.strip():
@@ -390,13 +403,13 @@ async def restore_files(backup_id: str, restore_path: str, source_path: str = ""
 
 
 @mcp.tool()
-async def pause(duration: int | None = None) -> dict:
-    """Pause the Duplicati scheduler. duration: optional seconds (converted to HH:MM:SS for Duplicati API)."""
-    if duration is not None and duration <= 0:
-        return {"error": "duration must be a positive number of seconds", "tool": "pause"}
+async def pause(duration: int = 0) -> dict:
+    """Pause the Duplicati scheduler. duration: optional number of seconds to pause (0 = indefinite, converted to HH:MM:SS for Duplicati API)."""
+    if duration < 0:
+        return {"error": "duration must be a non-negative number of seconds", "tool": "pause"}
     try:
         params: dict = {}
-        if duration is not None:
+        if duration > 0:
             h, rem = divmod(int(duration), 3600)
             m, s = divmod(rem, 60)
             params["duration"] = f"{h:02d}:{m:02d}:{s:02d}"
