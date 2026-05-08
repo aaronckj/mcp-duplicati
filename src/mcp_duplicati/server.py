@@ -173,7 +173,9 @@ async def list_versions(backup_id: str) -> dict:
 
 @mcp.tool()
 async def pause(duration: int | None = None) -> dict:
-    """Pause the Duplicati scheduler. duration: optional seconds (converted to HH:MM:SS for Duplicati API)."""
+    """Pause the Duplicati scheduler. duration: optional seconds to pause (must be > 0)."""
+    if duration is not None and duration <= 0:
+        return {"error": "duration must be a positive number of seconds", "tool": "pause"}
     try:
         params: dict = {}
         if duration is not None:
@@ -213,6 +215,27 @@ async def get_logs(backup_id: str | None = None, page_size: int = 20, page: int 
         return {"result": resp.json()}
     except Exception as e:
         return {"error": str(e), "tool": "get_logs", "detail": type(e).__name__}
+
+
+@mcp.tool()
+async def search_backup_files(
+    backup_id: str,
+    path_filter: str = "*",
+    restore_time: str = "latest",
+) -> dict:
+    """Search files within a backup version for restore planning. path_filter: glob pattern (e.g. '*.db', '/home/user/*'). restore_time: 'latest' or ISO 8601 timestamp from list_versions."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "search_backup_files"}
+    try:
+        resp = await _request(
+            "GET",
+            f"/api/v1/backup/{backup_id}/files",
+            params={"filter": path_filter, "time": restore_time},
+        )
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return {"error": str(e), "tool": "search_backup_files", "detail": type(e).__name__}
 
 
 def main() -> None:
