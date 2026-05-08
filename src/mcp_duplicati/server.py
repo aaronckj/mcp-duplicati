@@ -597,7 +597,7 @@ async def get_backup_schedule(backup_id: str) -> dict:
         resp.raise_for_status()
         data = resp.json()
         schedule = data.get("Schedule") or data.get("schedule")
-        return {"result": {"backup_id": backup_id, "schedule": schedule}}
+        return {"result": {"backup_id": backup_id.strip(), "schedule": schedule}}
     except Exception as e:
         return _err(e, "get_backup_schedule")
 
@@ -626,7 +626,7 @@ async def set_backup_schedule(backup_id: str, repeat: str, time: str = "", allow
         current["Schedule"] = schedule
         put_resp = await _request("PUT", f"/api/v1/backup/{backup_id.strip()}", json=current)
         put_resp.raise_for_status()
-        return {"result": {"backup_id": backup_id, "schedule": schedule}}
+        return {"result": {"backup_id": backup_id.strip(), "schedule": schedule}}
     except Exception as e:
         return _err(e, "set_backup_schedule")
 
@@ -669,7 +669,7 @@ async def delete_backup_schedule(backup_id: str) -> dict:
         current["Schedule"] = None
         put_resp = await _request("PUT", f"/api/v1/backup/{backup_id.strip()}", json=current)
         put_resp.raise_for_status()
-        return {"result": {"backup_id": backup_id, "schedule_removed": True}}
+        return {"result": {"backup_id": backup_id.strip(), "schedule_removed": True}}
     except Exception as e:
         return _err(e, "delete_backup_schedule")
 
