@@ -368,7 +368,7 @@ async def search_backup_files(backup_id: str, path_filter: str = "*", restore_ti
 
 @mcp.tool()
 async def restore_files(backup_id: str, restore_path: str, source_path: str = "", restore_time: str = "latest") -> dict:
-    """Restore files from a backup to a local directory. restore_path: destination directory on this machine. source_path: optional path filter within backup (empty = all files). restore_time: 'latest' or ISO timestamp."""
+    """Restore files from a backup to a local directory. restore_path: destination directory on this machine. source_path: optional comma-separated list of path filters within the backup (empty = restore all files). restore_time: 'latest' or ISO timestamp."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "restore_files"}
     if not restore_path or not restore_path.strip():
@@ -379,7 +379,9 @@ async def restore_files(backup_id: str, restore_path: str, source_path: str = ""
             "time": restore_time,
         }
         if source_path and source_path.strip():
-            payload["paths"] = [source_path]
+            paths = [p.strip() for p in source_path.split(",") if p.strip()]
+            if paths:
+                payload["paths"] = paths
         resp = await _request("POST", f"/api/v1/backup/{backup_id}/restore", json=payload)
         resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "restore_path": restore_path, "restore_started": True}}
@@ -417,12 +419,12 @@ async def resume() -> dict:
 
 
 @mcp.tool()
-async def get_logs(backup_id: str | None = None, page_size: int = 20, page: int = 0) -> dict:
-    """Retrieve recent log entries. backup_id: optional, filters to a specific job. page_size: 1-500. page: 0-indexed page number."""
+async def get_logs(backup_id: str = "", page_size: int = 20, page: int = 0) -> dict:
+    """Retrieve recent log entries. backup_id: optional backup job ID — leave empty for server-wide logs. page_size: 1-500. page: 0-indexed page number."""
     page_size = min(max(1, page_size), 500)
     page = max(0, page)
     try:
-        if backup_id is not None:
+        if backup_id and backup_id.strip():
             path = f"/api/v1/backup/{backup_id}/log"
         else:
             path = "/api/v1/logdata/log"
