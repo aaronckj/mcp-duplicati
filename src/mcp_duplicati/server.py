@@ -322,7 +322,7 @@ async def import_backup_config(config_json: str) -> dict:
     except json.JSONDecodeError as e:
         return {"error": f"Invalid JSON: {e}", "tool": "import_backup_config"}
     try:
-        resp = await _request("POST", "/api/v1/backups/import", json=config)
+        resp = await _request("POST", "/api/v1/backups", json=config)
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
