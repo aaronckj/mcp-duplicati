@@ -1039,19 +1039,8 @@ async def poll_operations(last_event_id: int = -1) -> dict:
 
 
 @mcp.tool()
-async def get_task_status(task_id: int) -> dict:
-    """Get the status of a specific Duplicati background task by ID. Returns task state (running, completed, failed), progress, and any error message. Task IDs appear in backup operation responses and poll_operations events."""
-    try:
-        resp = await _request("GET", f"/api/v1/task/{task_id}")
-        resp.raise_for_status()
-        return {"result": resp.json()}
-    except Exception as e:
-        return _err(e, "get_task_status")
-
-
-@mcp.tool()
 async def abort_task(task_id: int) -> dict:
-    """Abort a running Duplicati background task. task_id: task ID from poll_operations or backup operation responses. Returns immediately; use get_task_status to confirm termination."""
+    """Abort a running Duplicati background task. task_id: task ID from poll_operations or backup operation responses. Returns immediately; use get_task to confirm termination."""
     try:
         resp = await _request("POST", f"/api/v1/task/{task_id}/abort")
         resp.raise_for_status()
