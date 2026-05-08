@@ -24,7 +24,7 @@ def _build_proxy_body(method: str, path: str, **kwargs: Any) -> dict:
     }
     if "json" in kwargs:
         body["body"] = kwargs["json"]
-    if "params" in kwargs:
+    if kwargs.get("params"):
         body["query"] = {k: str(v) for k, v in kwargs["params"].items()}
     return body
 
