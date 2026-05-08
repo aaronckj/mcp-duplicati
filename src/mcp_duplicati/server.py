@@ -929,6 +929,36 @@ async def create_remote_folder(destination_url: str) -> dict:
         return _err(e, "create_remote_folder")
 
 
+@mcp.tool()
+async def get_backup_statistics(backup_id: str) -> dict:
+    """Get detailed statistics for a backup job: total file count, total size, last backup duration, added/modified/deleted file counts, and remote size. More detailed than backup_status. backup_id: backup job ID from list_backups."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "get_backup_statistics"}
+    backup_id = backup_id.strip()
+    try:
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}/filesets")
+        resp.raise_for_status()
+        filesets = resp.json() or []
+        latest = filesets[0] if filesets else {}
+        stats_resp = await _request("GET", f"/api/v1/backup/{backup_id}")
+        stats_resp.raise_for_status()
+        backup_info = stats_resp.json() or {}
+        settings = backup_info.get("Backup", {})
+        return {"result": {
+            "backup_id": backup_id,
+            "name": settings.get("Name"),
+            "latest_fileset": latest,
+            "total_filesets": len(filesets),
+            "source_size": settings.get("Metadata", {}).get("SourceSizeString"),
+            "backup_size": settings.get("Metadata", {}).get("BackupSizeString"),
+            "last_duration": settings.get("Metadata", {}).get("LastBackupDuration"),
+            "last_backup": settings.get("Metadata", {}).get("LastBackupDate"),
+            "file_count": settings.get("Metadata", {}).get("SourceFilesCount"),
+        }}
+    except Exception as e:
+        return _err(e, "get_backup_statistics")
+
+
 def main() -> None:
     mcp.run()
 
