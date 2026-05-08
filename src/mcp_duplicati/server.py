@@ -641,7 +641,8 @@ async def is_backup_active(backup_id: str) -> dict:
     try:
         resp = await _request("GET", "/api/v1/tasks")
         resp.raise_for_status()
-        tasks = resp.json() if isinstance(resp.json(), list) else []
+        tasks_raw = resp.json()
+        tasks = tasks_raw if isinstance(tasks_raw, list) else []
         matching = [t for t in tasks if str(t.get("BackupID", "")) == bid or str(t.get("Backup", {}).get("ID", "")) == bid]
         if matching:
             task = matching[0]
