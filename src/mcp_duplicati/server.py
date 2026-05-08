@@ -157,7 +157,8 @@ async def resume() -> dict:
 
 @mcp.tool()
 async def get_logs(backup_id: str | None = None, page_size: int = 20) -> dict:
-    """Retrieve recent log entries. backup_id: optional, filters to a specific job."""
+    """Retrieve recent log entries. backup_id: optional, filters to a specific job. page_size: 1–500."""
+    page_size = min(max(1, page_size), 500)
     try:
         if backup_id is not None:
             path = f"/api/v1/backup/{backup_id}/log"
