@@ -425,6 +425,19 @@ async def list_tasks() -> dict:
 
 
 @mcp.tool()
+async def stop_task(task_id: str) -> dict:
+    """Stop a queued or running Duplicati task by its task ID. Use list_tasks to find task IDs. Running backup tasks are cancelled; queued tasks are dequeued."""
+    if not task_id or not task_id.strip():
+        return {"error": "task_id must not be empty", "tool": "stop_task"}
+    try:
+        resp = await _request("DELETE", f"/api/v1/task/{task_id.strip()}")
+        resp.raise_for_status()
+        return {"result": {"task_id": task_id, "stopped": True}}
+    except Exception as e:
+        return _err(e, "stop_task")
+
+
+@mcp.tool()
 async def pause(duration: int = 0) -> dict:
     """Pause the Duplicati scheduler. duration: optional number of seconds to pause (0 = indefinite, converted to HH:MM:SS for Duplicati API)."""
     if duration < 0:
@@ -454,16 +467,22 @@ async def resume() -> dict:
 
 
 @mcp.tool()
-async def get_logs(backup_id: str = "", page_size: int = 20, page: int = 0) -> dict:
-    """Retrieve recent log entries. backup_id: optional backup job ID — leave empty for server-wide logs. page_size: 1-500. page: 0-indexed page number."""
+async def get_logs(backup_id: str = "", page_size: int = 20, page: int = 0, level: str = "") -> dict:
+    """Retrieve recent log entries. backup_id: optional backup job ID — leave empty for server-wide logs. page_size: 1-500. page: 0-indexed page number. level: optional filter — one of General, Warning, Error, Retry, Upload, Download (server-wide logs only)."""
     page_size = min(max(1, page_size), 500)
     page = max(0, page)
+    _valid_levels = {"General", "Warning", "Error", "Retry", "Upload", "Download"}
+    if level and level not in _valid_levels:
+        return {"error": f"Invalid level '{level}'. Valid: {', '.join(sorted(_valid_levels))}", "tool": "get_logs"}
     try:
+        params: dict = {"pagesize": page_size, "page": page}
         if backup_id and backup_id.strip():
             path = f"/api/v1/backup/{backup_id}/log"
         else:
             path = "/api/v1/logdata/log"
-        resp = await _request("GET", path, params={"pagesize": page_size, "page": page})
+            if level:
+                params["level"] = level
+        resp = await _request("GET", path, params=params)
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
