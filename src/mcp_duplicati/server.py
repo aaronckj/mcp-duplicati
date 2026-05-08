@@ -1241,6 +1241,47 @@ async def get_backup_retention(backup_id: str) -> dict:
         return _err(e, "get_backup_retention")
 
 
+@mcp.tool()
+async def set_backup_retention(
+    backup_id: str,
+    keep_versions: int = 0,
+    keep_time: str = "",
+    retention_policy: str = "",
+    no_auto_compact: bool = False,
+) -> dict:
+    """Set the retention policy for a backup job. keep_versions: number of backup versions to keep (0 = no limit by count). keep_time: time span to keep backups (e.g. '6M' for 6 months, '1Y' for 1 year, '30D' for 30 days). retention_policy: advanced tiered expression (e.g. '1W:1D,4W:1W,12M:1M' = keep daily for 1 week, weekly for 4 weeks, monthly for 12 months). no_auto_compact: disable automatic space reclamation. Existing retention settings are replaced."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "set_backup_retention"}
+    if keep_versions < 0:
+        return {"error": "keep_versions must be >= 0 (0 = unlimited)", "tool": "set_backup_retention"}
+    backup_id = backup_id.strip()
+    retention_map = {
+        "keep-versions": str(keep_versions) if keep_versions > 0 else "",
+        "keep-time": keep_time.strip() if keep_time else "",
+        "retention-policy": retention_policy.strip() if retention_policy else "",
+        "no-auto-compact": "true" if no_auto_compact else "",
+    }
+    try:
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}")
+        resp.raise_for_status()
+        data = resp.json()
+        backup = data.get("Backup", data)
+        settings = backup.get("Settings") or []
+        retention_keys = set(retention_map.keys())
+        settings = [s for s in settings if s.get("Name") not in retention_keys]
+        for name, value in retention_map.items():
+            if value:
+                settings.append({"Name": name, "Value": value})
+        backup["Settings"] = settings
+        data["Backup"] = backup
+        put_resp = await _request("PUT", f"/api/v1/backup/{backup_id}", json=data)
+        put_resp.raise_for_status()
+        applied = {k: v for k, v in retention_map.items() if v}
+        return {"result": {"backup_id": backup_id, "retention_applied": applied}}
+    except Exception as e:
+        return _err(e, "set_backup_retention")
+
+
 def main() -> None:
     mcp.run()
 
