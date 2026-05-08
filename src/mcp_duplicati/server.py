@@ -239,7 +239,9 @@ async def update_backup(
         put_resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "updated": True}}
     except Exception as e:
-        return _err(e, "update_backup")
+        err = _err(e, "update_backup")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -253,7 +255,9 @@ async def delete_backup(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "deleted": True}}
     except Exception as e:
-        return _err(e, "delete_backup")
+        err = _err(e, "delete_backup")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -348,7 +352,9 @@ async def repair_backup(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "repair_started": True}}
     except Exception as e:
-        return _err(e, "repair_backup")
+        err = _err(e, "repair_backup")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -362,7 +368,9 @@ async def compact_backup(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "compact_started": True}}
     except Exception as e:
-        return _err(e, "compact_backup")
+        err = _err(e, "compact_backup")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -376,7 +384,9 @@ async def verify_backup(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "verify_started": True}}
     except Exception as e:
-        return _err(e, "verify_backup")
+        err = _err(e, "verify_backup")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
