@@ -29,6 +29,17 @@ def _build_proxy_body(method: str, path: str, **kwargs: Any) -> dict:
     return body
 
 
+def _err(e: Exception, tool: str) -> dict:
+    out: dict = {"error": str(e), "tool": tool, "detail": type(e).__name__}
+    if isinstance(e, httpx.HTTPStatusError):
+        out["status"] = e.response.status_code
+        try:
+            out["body"] = e.response.json()
+        except Exception:
+            out["body"] = e.response.text[:500]
+    return out
+
+
 async def _login() -> str:
     """Authenticate with Duplicati and cache the session token."""
     global _session_token
@@ -94,7 +105,7 @@ async def server_info() -> dict:
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
-        return {"error": str(e), "tool": "server_info", "detail": type(e).__name__}
+        return _err(e, "server_info")
 
 
 @mcp.tool()
@@ -105,7 +116,7 @@ async def list_backups() -> dict:
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
-        return {"error": str(e), "tool": "list_backups", "detail": type(e).__name__}
+        return _err(e, "list_backups")
 
 
 @mcp.tool()
@@ -118,7 +129,7 @@ async def backup_status(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
-        return {"error": str(e), "tool": "backup_status", "detail": type(e).__name__}
+        return _err(e, "backup_status")
 
 
 @mcp.tool()
@@ -131,7 +142,7 @@ async def run_backup(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "triggered": True}}
     except Exception as e:
-        return {"error": str(e), "tool": "run_backup", "detail": type(e).__name__}
+        return _err(e, "run_backup")
 
 
 @mcp.tool()
@@ -144,12 +155,12 @@ async def abort_backup(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "aborted": True}}
     except Exception as e:
-        return {"error": str(e), "tool": "abort_backup", "detail": type(e).__name__}
+        return _err(e, "abort_backup")
 
 
 @mcp.tool()
 async def delete_backup(backup_id: str) -> dict:
-    """Delete a backup job configuration. NOTE: removes the job definition only — existing backup data on the destination is not deleted."""
+    """Delete a backup job configuration. Does NOT delete backup data on the destination."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "delete_backup"}
     try:
@@ -157,7 +168,7 @@ async def delete_backup(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "deleted": True}}
     except Exception as e:
-        return {"error": str(e), "tool": "delete_backup", "detail": type(e).__name__}
+        return _err(e, "delete_backup")
 
 
 @mcp.tool()
@@ -168,7 +179,7 @@ async def progress() -> dict:
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
-        return {"error": str(e), "tool": "progress", "detail": type(e).__name__}
+        return _err(e, "progress")
 
 
 @mcp.tool()
@@ -181,12 +192,12 @@ async def list_versions(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
-        return {"error": str(e), "tool": "list_versions", "detail": type(e).__name__}
+        return _err(e, "list_versions")
 
 
 @mcp.tool()
 async def pause(duration: int | None = None) -> dict:
-    """Pause the Duplicati scheduler. duration: optional seconds to pause (must be > 0)."""
+    """Pause the Duplicati scheduler. duration: optional seconds (converted to HH:MM:SS for Duplicati API)."""
     if duration is not None and duration <= 0:
         return {"error": "duration must be a positive number of seconds", "tool": "pause"}
     try:
@@ -199,7 +210,7 @@ async def pause(duration: int | None = None) -> dict:
         resp.raise_for_status()
         return {"result": {"paused": True, "duration": duration}}
     except Exception as e:
-        return {"error": str(e), "tool": "pause", "detail": type(e).__name__}
+        return _err(e, "pause")
 
 
 @mcp.tool()
@@ -210,12 +221,12 @@ async def resume() -> dict:
         resp.raise_for_status()
         return {"result": {"resumed": True}}
     except Exception as e:
-        return {"error": str(e), "tool": "resume", "detail": type(e).__name__}
+        return _err(e, "resume")
 
 
 @mcp.tool()
 async def get_logs(backup_id: str | None = None, page_size: int = 20, page: int = 0) -> dict:
-    """Retrieve log entries. backup_id: optional job filter. page_size: 1–500. page: 0-based page offset for pagination."""
+    """Retrieve recent log entries. backup_id: optional, filters to a specific job. page_size: 1-500. page: 0-indexed page number."""
     page_size = min(max(1, page_size), 500)
     page = max(0, page)
     try:
@@ -227,16 +238,12 @@ async def get_logs(backup_id: str | None = None, page_size: int = 20, page: int 
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
-        return {"error": str(e), "tool": "get_logs", "detail": type(e).__name__}
+        return _err(e, "get_logs")
 
 
 @mcp.tool()
-async def search_backup_files(
-    backup_id: str,
-    path_filter: str = "*",
-    restore_time: str = "latest",
-) -> dict:
-    """Search files within a backup version for restore planning. path_filter: glob pattern (e.g. '*.db', '/home/user/*'). restore_time: 'latest' or ISO 8601 timestamp from list_versions."""
+async def search_backup_files(backup_id: str, path_filter: str = "*", restore_time: str = "latest") -> dict:
+    """Search files within a backup version. path_filter: glob pattern (e.g., '*.pdf'). restore_time: 'latest' or ISO timestamp."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "search_backup_files"}
     try:
@@ -248,7 +255,31 @@ async def search_backup_files(
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
-        return {"error": str(e), "tool": "search_backup_files", "detail": type(e).__name__}
+        return _err(e, "search_backup_files")
+
+
+@mcp.tool()
+async def repair_backup(backup_id: str) -> dict:
+    """Repair the local database for a backup job. Rebuilds index from destination."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "repair_backup"}
+    try:
+        resp = await _request("POST", f"/api/v1/backup/{backup_id}/repair")
+        resp.raise_for_status()
+        return {"result": {"backup_id": backup_id, "repair_started": True}}
+    except Exception as e:
+        return _err(e, "repair_backup")
+
+
+@mcp.tool()
+async def get_server_settings() -> dict:
+    """Get Duplicati server-level settings (schedule, concurrency, update channel, etc.)."""
+    try:
+        resp = await _request("GET", "/api/v1/serversettings")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "get_server_settings")
 
 
 def main() -> None:
