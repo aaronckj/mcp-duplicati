@@ -464,11 +464,14 @@ async def search_backup_files(backup_id: str, path_filter: str = "*", restore_ti
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "search_backup_files"}
     backup_id = backup_id.strip()
+    rt = restore_time.strip() if restore_time and restore_time.strip() else "latest"
+    if rt != "latest" and not re.match(r'^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?', rt):
+        return {"error": f"Invalid restore_time '{rt}'. Use 'latest' or an ISO timestamp (e.g. '2024-01-15T10:30:00Z').", "tool": "search_backup_files", "backup_id": backup_id}
     try:
         resp = await _request(
             "GET",
             f"/api/v1/backup/{backup_id}/files",
-            params={"filter": path_filter.strip(), "time": restore_time.strip()},
+            params={"filter": path_filter.strip(), "time": rt},
         )
         resp.raise_for_status()
         return {"result": resp.json()}
@@ -696,7 +699,10 @@ async def set_backup_schedule(backup_id: str, repeat: str, time: str = "", allow
         schedule = current.get("Schedule") or {}
         schedule["Repeat"] = repeat
         if time and time.strip():
-            schedule["Time"] = time.strip()
+            t = time.strip()
+            if not re.match(r'^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}', t):
+                return {"error": f"Invalid time '{t}'. Use ISO 8601 format (e.g. '2024-01-15T10:30:00Z').", "tool": "set_backup_schedule", "backup_id": backup_id}
+            schedule["Time"] = t
         elif not schedule.get("Time"):
             schedule["Time"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         if allowed_days and allowed_days.strip():
