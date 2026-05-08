@@ -985,7 +985,7 @@ async def delete_local_database(backup_id: str) -> dict:
         return {"error": "backup_id must not be empty", "tool": "delete_local_database"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("DELETE", f"/api/v1/backup/{backup_id}/database")
+        resp = await _request("POST", f"/api/v1/backup/{backup_id}/deletedb")
         resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "database_deleted": True, "note": "Duplicati will rebuild the local database on next run"}}
     except Exception as e:
@@ -1234,9 +1234,7 @@ async def get_backup_report(backup_id: str) -> dict:
         return {"error": "backup_id must not be empty", "tool": "get_backup_report"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("GET", f"/api/v1/backup/{backup_id}/log", params={"level": "Information", "pagesize": 1})
-        if resp.status_code == 404:
-            resp = await _request("GET", f"/api/v1/backup/{backup_id}/log", params={"pagesize": 1})
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}/log", params={"pagesize": 1})
         resp.raise_for_status()
         logs = resp.json()
         status_resp = await _request("GET", f"/api/v1/backup/{backup_id}")
