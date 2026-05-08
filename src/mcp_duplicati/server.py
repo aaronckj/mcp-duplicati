@@ -863,6 +863,34 @@ async def check_updates() -> dict:
         return _err(e, "check_updates")
 
 
+@mcp.tool()
+async def purge_broken_files(backup_id: str) -> dict:
+    """Remove database entries for backup set versions that reference files missing from remote storage. Useful when remote files have been manually deleted or lost — cleans up broken references so the backup job can continue without errors. This is less destructive than repair_backup. backup_id: backup job ID from list_backups."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "purge_broken_files"}
+    backup_id = backup_id.strip()
+    try:
+        resp = await _request("POST", f"/api/v1/backup/{backup_id}/purgebrokenfiles")
+        resp.raise_for_status()
+        return {"result": {"backup_id": backup_id, "purge_started": True}}
+    except Exception as e:
+        return _err(e, "purge_broken_files")
+
+
+@mcp.tool()
+async def delete_local_database(backup_id: str) -> dict:
+    """Delete the local SQLite database for a backup job and schedule a rebuild from remote storage. Use this when the local database is corrupt and repair_backup fails — Duplicati will recreate it by scanning the remote destination. The backup job is temporarily unavailable while the database is being rebuilt. backup_id: backup job ID from list_backups."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "delete_local_database"}
+    backup_id = backup_id.strip()
+    try:
+        resp = await _request("DELETE", f"/api/v1/backup/{backup_id}/database")
+        resp.raise_for_status()
+        return {"result": {"backup_id": backup_id, "database_deleted": True, "note": "Duplicati will rebuild the local database on next run"}}
+    except Exception as e:
+        return _err(e, "delete_local_database")
+
+
 def main() -> None:
     mcp.run()
 
