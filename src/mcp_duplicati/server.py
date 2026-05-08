@@ -799,7 +799,7 @@ async def get_server_setting(key: str) -> dict:
             return {"error": f"Setting '{key}' not found. Use get_server_settings to list valid keys.", "tool": "get_server_setting"}
         return {"result": {"key": key, "value": settings[key]}}
     except Exception as e:
-        return _err(e, "get_server_setting")
+        err = _err(e, "get_server_setting"); err["key"] = key; return err
 
 
 @mcp.tool()
@@ -1024,7 +1024,7 @@ async def create_remote_folder(destination_url: str) -> dict:
         resp.raise_for_status()
         return {"result": {"created": True, "destination_url": destination_url.strip()}}
     except Exception as e:
-        return _err(e, "create_remote_folder")
+        err = _err(e, "create_remote_folder"); err["destination_url"] = destination_url.strip(); return err
 
 
 @mcp.tool()
@@ -1136,7 +1136,7 @@ async def poll_operations(last_event_id: int = -1) -> dict:
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
-        return _err(e, "poll_operations")
+        err = _err(e, "poll_operations"); err["last_event_id"] = last_event_id; return err
 
 
 @mcp.tool()
