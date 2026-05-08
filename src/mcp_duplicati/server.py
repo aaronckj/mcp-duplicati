@@ -401,7 +401,7 @@ async def search_backup_files(backup_id: str, path_filter: str = "*", restore_ti
         resp = await _request(
             "GET",
             f"/api/v1/backup/{backup_id.strip()}/files",
-            params={"filter": path_filter, "time": restore_time},
+            params={"filter": path_filter.strip(), "time": restore_time.strip()},
         )
         resp.raise_for_status()
         return {"result": resp.json()}
@@ -418,8 +418,8 @@ async def restore_files(backup_id: str, restore_path: str, source_path: str = ""
         return {"error": "restore_path must not be empty", "tool": "restore_files"}
     try:
         payload: dict = {
-            "restore-path": restore_path,
-            "time": restore_time,
+            "restore-path": restore_path.strip(),
+            "time": restore_time.strip(),
         }
         if source_path and source_path.strip():
             paths = [p.strip() for p in source_path.split(",") if p.strip()]
@@ -427,7 +427,7 @@ async def restore_files(backup_id: str, restore_path: str, source_path: str = ""
                 payload["paths"] = paths
         resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/restore", json=payload)
         resp.raise_for_status()
-        return {"result": {"backup_id": backup_id.strip(), "restore_path": restore_path, "restore_started": True}}
+        return {"result": {"backup_id": backup_id.strip(), "restore_path": restore_path.strip(), "restore_started": True}}
     except Exception as e:
         return _err(e, "restore_files")
 
