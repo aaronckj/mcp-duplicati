@@ -841,6 +841,28 @@ async def list_compression_modules() -> dict:
         return _err(e, "list_compression_modules")
 
 
+@mcp.tool()
+async def list_filters() -> dict:
+    """List built-in filter groups available in Duplicati. Filter groups are predefined sets of exclusion patterns for common use cases (e.g., exclude OS temp files, version control directories, browser caches). Returns each group's key name and patterns — use the key in backup job filter configuration."""
+    try:
+        resp = await _request("GET", "/api/v1/filters")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "list_filters")
+
+
+@mcp.tool()
+async def check_updates() -> dict:
+    """Check if a newer version of Duplicati is available. Returns current version, latest available version, release type (stable/beta/experimental/canary), download URL, and release notes summary. Useful for keeping backup agents up to date."""
+    try:
+        resp = await _request("GET", "/api/v1/updates")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "check_updates")
+
+
 def main() -> None:
     mcp.run()
 
