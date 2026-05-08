@@ -1297,8 +1297,8 @@ async def is_backup_overdue(backup_id: str, max_hours: float = 25.0) -> dict:
         last_result = metadata.get("LastBackupResult")
         if not last_run_str:
             return {"result": {"backup_id": backup_id, "overdue": True, "reason": "never_run", "last_run": None, "max_hours": max_hours}}
-        last_run = datetime.datetime.fromisoformat(last_run_str.replace("Z", "+00:00"))
-        now = datetime.datetime.now(datetime.timezone.utc)
+        last_run = datetime.fromisoformat(last_run_str.replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
         hours_since = (now - last_run).total_seconds() / 3600
         overdue = hours_since > max_hours
         return {"result": {"backup_id": backup_id, "overdue": overdue, "hours_since_last_run": round(hours_since, 2), "last_run": last_run_str, "last_result": last_result, "max_hours": max_hours}}
