@@ -187,12 +187,12 @@ async def create_backup(name: str, source_paths: str, destination_url: str, pass
     config = {
         "Backup": {
             "Name": name,
+            "TargetURL": destination_url,
             "Sources": sources,
             "Settings": settings,
             "Filters": filters,
         },
         "Schedule": None,
-        "Destinations": [destination_url],
     }
     try:
         resp = await _request("POST", "/api/v1/backups", json=config)
@@ -228,7 +228,7 @@ async def update_backup(
         if source_paths:
             backup["Sources"] = [p.strip() for p in source_paths.split(",") if p.strip()]
         if destination_url:
-            current["Destinations"] = [destination_url]
+            backup["TargetURL"] = destination_url
         if passphrase:
             settings = backup.get("Settings", [])
             settings = [s for s in settings if s.get("Name") != "passphrase"]
@@ -427,7 +427,7 @@ async def restore_files(backup_id: str, restore_path: str, source_path: str = ""
                 payload["paths"] = paths
         resp = await _request("POST", f"/api/v1/backup/{backup_id.strip()}/restore", json=payload)
         resp.raise_for_status()
-        return {"result": {"backup_id": backup_id, "restore_path": restore_path, "restore_started": True}}
+        return {"result": {"backup_id": backup_id.strip(), "restore_path": restore_path, "restore_started": True}}
     except Exception as e:
         return _err(e, "restore_files")
 
