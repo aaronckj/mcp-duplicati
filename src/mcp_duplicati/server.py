@@ -196,7 +196,8 @@ async def update_backup(
     if not any([name, source_paths, destination_url, passphrase, exclude_filters]):
         return {"error": "At least one field to update must be specified", "tool": "update_backup"}
     try:
-        resp = await _request("GET", f"/api/v1/backup/{backup_id}")
+        bid = backup_id.strip()
+        resp = await _request("GET", f"/api/v1/backup/{bid}")
         resp.raise_for_status()
         current = resp.json()
 
@@ -216,7 +217,7 @@ async def update_backup(
             patterns = [p.strip() for p in exclude_filters.split(",") if p.strip()]
             backup["Filters"] = [{"Order": i, "Include": False, "Expression": p} for i, p in enumerate(patterns)]
 
-        put_resp = await _request("PUT", f"/api/v1/backup/{backup_id}", json=current)
+        put_resp = await _request("PUT", f"/api/v1/backup/{bid}", json=current)
         put_resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "updated": True}}
     except Exception as e:
