@@ -1149,7 +1149,7 @@ async def abort_task(task_id: int) -> dict:
         resp.raise_for_status()
         return {"result": {"task_id": task_id, "aborted": True}}
     except Exception as e:
-        return _err(e, "abort_task")
+        err = _err(e, "abort_task"); err["task_id"] = task_id; return err
 
 
 @mcp.tool()
