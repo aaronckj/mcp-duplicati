@@ -303,6 +303,27 @@ async def search_backup_files(backup_id: str, path_filter: str = "*", restore_ti
 
 
 @mcp.tool()
+async def restore_files(backup_id: str, restore_path: str, source_path: str = "", restore_time: str = "latest") -> dict:
+    """Restore files from a backup to a local directory. restore_path: destination directory on this machine. source_path: optional path filter within backup (empty = all files). restore_time: 'latest' or ISO timestamp."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "restore_files"}
+    if not restore_path or not restore_path.strip():
+        return {"error": "restore_path must not be empty", "tool": "restore_files"}
+    try:
+        payload: dict = {
+            "restore-path": restore_path,
+            "time": restore_time,
+        }
+        if source_path and source_path.strip():
+            payload["paths"] = [source_path]
+        resp = await _request("POST", f"/api/v1/backup/{backup_id}/restore", json=payload)
+        resp.raise_for_status()
+        return {"result": {"backup_id": backup_id, "restore_path": restore_path, "restore_started": True}}
+    except Exception as e:
+        return _err(e, "restore_files")
+
+
+@mcp.tool()
 async def repair_backup(backup_id: str) -> dict:
     """Repair the local database for a backup job. Rebuilds index from destination."""
     if not backup_id or not backup_id.strip():
@@ -313,6 +334,32 @@ async def repair_backup(backup_id: str) -> dict:
         return {"result": {"backup_id": backup_id, "repair_started": True}}
     except Exception as e:
         return _err(e, "repair_backup")
+
+
+@mcp.tool()
+async def compact_backup(backup_id: str) -> dict:
+    """Compact the backup destination: removes unused data blocks to reclaim storage space."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "compact_backup"}
+    try:
+        resp = await _request("POST", f"/api/v1/backup/{backup_id}/compact")
+        resp.raise_for_status()
+        return {"result": {"backup_id": backup_id, "compact_started": True}}
+    except Exception as e:
+        return _err(e, "compact_backup")
+
+
+@mcp.tool()
+async def verify_backup(backup_id: str) -> dict:
+    """Verify backup integrity by comparing local database with actual data at the destination."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "verify_backup"}
+    try:
+        resp = await _request("POST", f"/api/v1/backup/{backup_id}/verify")
+        resp.raise_for_status()
+        return {"result": {"backup_id": backup_id, "verify_started": True}}
+    except Exception as e:
+        return _err(e, "verify_backup")
 
 
 @mcp.tool()
