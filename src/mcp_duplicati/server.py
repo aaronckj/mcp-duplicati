@@ -325,7 +325,7 @@ async def import_backup_config(config_json: str) -> dict:
     except json.JSONDecodeError as e:
         return {"error": f"Invalid JSON: {e}", "tool": "import_backup_config"}
     try:
-        resp = await _request("POST", "/api/v1/backups", json=config)
+        resp = await _request("POST", "/api/v1/backups/import", json=config)
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
@@ -361,7 +361,7 @@ async def get_backup_commandline(backup_id: str) -> dict:
         return {"error": "backup_id must not be empty", "tool": "get_backup_commandline"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("GET", f"/api/v1/backup/{backup_id}/commandline")
+        resp = await _request("POST", f"/api/v1/backup/{backup_id}/commandline")
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
@@ -825,7 +825,7 @@ async def test_connection(destination_url: str) -> dict:
         resp = await _request(
             "POST",
             "/api/v1/remoteoperation/test",
-            json={"uri": destination_url},
+            json={"Url": destination_url},
         )
         if not resp.is_success:
             try:
@@ -1246,7 +1246,7 @@ async def get_backup_report(backup_id: str) -> dict:
         return {"error": "backup_id must not be empty", "tool": "get_backup_report"}
     backup_id = backup_id.strip()
     try:
-        resp = await _request("GET", f"/api/v1/backup/{backup_id}/log", params={"pagesize": 1})
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}/log", params={"pagesize": 5, "offset": 0})
         resp.raise_for_status()
         logs = resp.json() or []
         status_resp = await _request("GET", f"/api/v1/backup/{backup_id}")
@@ -1254,7 +1254,7 @@ async def get_backup_report(backup_id: str) -> dict:
         status_data = status_resp.json()
         backup = status_data.get("Backup", status_data)
         metadata = backup.get("Metadata") or {}
-        latest_log = logs[0] if logs else {}
+        latest_log = next((l for l in logs if l.get("ParsedResult")), logs[0] if logs else {})
         parsed_result: dict = {}
         if latest_log.get("ParsedResult"):
             try:
@@ -1270,7 +1270,7 @@ async def get_backup_report(backup_id: str) -> dict:
             "files_deleted": parsed_result.get("DeletedFiles"),
             "files_modified": parsed_result.get("ModifiedFiles"),
             "source_size_bytes": parsed_result.get("SizeOfExaminedFiles"),
-            "backup_size_bytes": parsed_result.get("SizeOfOpenedFiles"),
+            "backup_size_bytes": parsed_result.get("UploadedSize"),
             "added_size_bytes": parsed_result.get("SizeOfAddedFiles"),
             "errors": parsed_result.get("Errors") or [],
             "warnings": parsed_result.get("Warnings") or [],
