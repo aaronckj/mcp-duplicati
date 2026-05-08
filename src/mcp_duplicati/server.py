@@ -810,7 +810,9 @@ async def test_connection(destination_url: str) -> dict:
         data = resp.json()
         return {"result": {"destination_url": destination_url, "success": True, "response": data}}
     except Exception as e:
-        return _err(e, "test_connection")
+        err = _err(e, "test_connection")
+        err["destination_url"] = destination_url
+        return err
 
 
 @mcp.tool()
@@ -853,7 +855,9 @@ async def dismiss_notification(notification_id: str) -> dict:
         resp.raise_for_status()
         return {"result": {"notification_id": notification_id, "dismissed": True}}
     except Exception as e:
-        return _err(e, "dismiss_notification")
+        err = _err(e, "dismiss_notification")
+        err["notification_id"] = notification_id
+        return err
 
 
 @mcp.tool()
