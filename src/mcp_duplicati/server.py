@@ -696,7 +696,9 @@ async def is_backup_active(backup_id: str) -> dict:
             return {"result": {"backup_id": backup_id, "active": True, "phase": prog.get("Phase")}}
         return {"result": {"backup_id": backup_id, "active": False}}
     except Exception as e:
-        return _err(e, "is_backup_active")
+        err = _err(e, "is_backup_active")
+        err["backup_id"] = backup_id
+        return err
 
 
 
@@ -715,7 +717,9 @@ async def delete_backup_schedule(backup_id: str) -> dict:
         put_resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "schedule_removed": True}}
     except Exception as e:
-        return _err(e, "delete_backup_schedule")
+        err = _err(e, "delete_backup_schedule")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -832,7 +836,9 @@ async def list_remote_volumes(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": resp.json()}
     except Exception as e:
-        return _err(e, "list_remote_volumes")
+        err = _err(e, "list_remote_volumes")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -890,7 +896,9 @@ async def purge_deleted_files(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "purge_started": True}}
     except Exception as e:
-        return _err(e, "purge_deleted_files")
+        err = _err(e, "purge_deleted_files")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -915,7 +923,9 @@ async def delete_local_database(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "database_deleted": True, "note": "Duplicati will rebuild the local database on next run"}}
     except Exception as e:
-        return _err(e, "delete_local_database")
+        err = _err(e, "delete_local_database")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -1036,7 +1046,9 @@ async def vacuum_database(backup_id: str) -> dict:
         resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "vacuumed": True}}
     except Exception as e:
-        return _err(e, "vacuum_database")
+        err = _err(e, "vacuum_database")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -1201,7 +1213,9 @@ async def move_backup_source(backup_id: str, old_path: str, new_path: str) -> di
         put_resp.raise_for_status()
         return {"result": {"backup_id": backup_id, "replaced": old_path, "with": new_path, "total_sources": len(backup["Sources"])}}
     except Exception as e:
-        return _err(e, "move_backup_source")
+        err = _err(e, "move_backup_source")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
@@ -1228,7 +1242,9 @@ async def is_backup_overdue(backup_id: str, max_hours: float = 25.0) -> dict:
         overdue = hours_since > max_hours
         return {"result": {"backup_id": backup_id, "overdue": overdue, "hours_since_last_run": round(hours_since, 2), "last_run": last_run_str, "last_result": last_result, "max_hours": max_hours}}
     except Exception as e:
-        return _err(e, "is_backup_overdue")
+        err = _err(e, "is_backup_overdue")
+        err["backup_id"] = backup_id
+        return err
 
 
 @mcp.tool()
