@@ -785,6 +785,17 @@ async def dismiss_notification(notification_id: str) -> dict:
         return _err(e, "dismiss_notification")
 
 
+@mcp.tool()
+async def get_system_info() -> dict:
+    """Get Duplicati system information: machine name, configuration directory, log directory, temporary directory, database path, default settings, and installed backend/encryption modules. Useful for verifying the Duplicati installation and locating config files."""
+    try:
+        resp = await _request("GET", "/api/v1/systeminfo")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "get_system_info")
+
+
 def main() -> None:
     mcp.run()
 
