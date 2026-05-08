@@ -1114,6 +1114,23 @@ async def remove_backup_filter(backup_id: str, expression: str) -> dict:
         return _err(e, "remove_backup_filter")
 
 
+@mcp.tool()
+async def list_backup_filters(backup_id: str) -> dict:
+    """List all include and exclude filters configured for a backup job. Returns each filter's expression, include/exclude flag, and sort order. Use add_backup_filter and remove_backup_filter to manage individual filters."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "list_backup_filters"}
+    backup_id = backup_id.strip()
+    try:
+        resp = await _request("GET", f"/api/v1/backup/{backup_id}")
+        resp.raise_for_status()
+        data = resp.json()
+        backup = data.get("Backup", data)
+        filters = sorted(backup.get("Filters") or [], key=lambda f: f.get("Order", 0))
+        return {"result": {"backup_id": backup_id, "filters": filters, "total": len(filters)}}
+    except Exception as e:
+        return _err(e, "list_backup_filters")
+
+
 def main() -> None:
     mcp.run()
 
