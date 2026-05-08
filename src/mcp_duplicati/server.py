@@ -188,11 +188,12 @@ async def update_backup(
     source_paths: str = "",
     destination_url: str = "",
     passphrase: str = "",
+    exclude_filters: str = "",
 ) -> dict:
-    """Update an existing backup job. Only non-empty fields are changed. Fetches current config, applies changes, then PUTs the updated config."""
+    """Update an existing backup job. Only non-empty fields are changed. Fetches current config, applies changes, then PUTs the updated config. exclude_filters: comma-separated glob patterns to exclude (replaces existing filters; omit to keep current filters)."""
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "update_backup"}
-    if not any([name, source_paths, destination_url, passphrase]):
+    if not any([name, source_paths, destination_url, passphrase, exclude_filters]):
         return {"error": "At least one field to update must be specified", "tool": "update_backup"}
     try:
         resp = await _request("GET", f"/api/v1/backup/{backup_id}")
@@ -211,6 +212,9 @@ async def update_backup(
             settings = [s for s in settings if s.get("Name") != "passphrase"]
             settings.append({"Name": "passphrase", "Value": passphrase})
             backup["Settings"] = settings
+        if exclude_filters:
+            patterns = [p.strip() for p in exclude_filters.split(",") if p.strip()]
+            backup["Filters"] = [{"Order": i, "Include": False, "Expression": p} for i, p in enumerate(patterns)]
 
         put_resp = await _request("PUT", f"/api/v1/backup/{backup_id}", json=current)
         put_resp.raise_for_status()
