@@ -403,6 +403,28 @@ async def restore_files(backup_id: str, restore_path: str, source_path: str = ""
 
 
 @mcp.tool()
+async def get_server_state() -> dict:
+    """Get current Duplicati server runtime state: whether the scheduler is paused, active task info, program version, and last update check. Different from server_info which returns installed version metadata."""
+    try:
+        resp = await _request("GET", "/api/v1/serverstate")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "get_server_state")
+
+
+@mcp.tool()
+async def list_tasks() -> dict:
+    """List all queued and running backup tasks in Duplicati. Returns task ID, backup ID, task type (Backup/Restore/Verify), and status. Use abort_backup to cancel a running backup task."""
+    try:
+        resp = await _request("GET", "/api/v1/tasks")
+        resp.raise_for_status()
+        return {"result": resp.json()}
+    except Exception as e:
+        return _err(e, "list_tasks")
+
+
+@mcp.tool()
 async def pause(duration: int = 0) -> dict:
     """Pause the Duplicati scheduler. duration: optional number of seconds to pause (0 = indefinite, converted to HH:MM:SS for Duplicati API)."""
     if duration < 0:
