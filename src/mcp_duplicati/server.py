@@ -491,7 +491,7 @@ async def search_backup_files(backup_id: str, path_filter: str = "*", restore_ti
         resp = await _request(
             "GET",
             f"/api/v1/backup/{backup_id}/files",
-            params={"filter": pf, "time": rt},
+            params={"filter": pf} if rt == "latest" else {"filter": pf, "time": rt},
         )
         resp.raise_for_status()
         return {"result": resp.json()}
