@@ -588,7 +588,6 @@ async def pause(duration: int = 0) -> dict:
     if duration > 604800:
         return {"error": "duration must be <= 604800 seconds (7 days)", "tool": "pause"}
     try:
-        params: dict = {}
         if duration > 0:
             h, rem = divmod(int(duration), 3600)
             m, s = divmod(rem, 60)
@@ -599,8 +598,10 @@ async def pause(duration: int = 0) -> dict:
                 parts.append(f"{m}m")
             if s or not parts:
                 parts.append(f"{s}s")
-            params["duration"] = "".join(parts)
-        resp = await _request("POST", "/api/v1/serverstate/pause", params=params)
+            path = f"/api/v1/serverstate/pause/{''.join(parts)}"
+        else:
+            path = "/api/v1/serverstate/pause"
+        resp = await _request("POST", path)
         resp.raise_for_status()
         return {"result": {"paused": True, "duration": duration if duration > 0 else None}}
     except Exception as e:
