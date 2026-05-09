@@ -545,10 +545,9 @@ async def restore_files(backup_id: str, restore_path: str, source_path: str = ""
     if rt != "latest" and not re.match(r'^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?', rt):
         return {"error": f"Invalid restore_time '{rt}'. Use 'latest' or an ISO timestamp (e.g. '2024-01-15T10:30:00Z').", "tool": "restore_files", "backup_id": backup_id}
     try:
-        payload: dict = {
-            "restore_path": restore_path,
-            "time": rt,
-        }
+        payload: dict = {"restore_path": restore_path}
+        if rt != "latest":
+            payload["time"] = rt
         if source_path and source_path.strip():
             paths = [p.strip() for p in source_path.split(",") if p.strip()]
             if paths:
@@ -1409,8 +1408,8 @@ async def set_backup_retention(
     if keep_versions < 0:
         return {"error": "keep_versions must be >= 0 (0 = unlimited)", "tool": "set_backup_retention"}
     if keep_time and keep_time.strip():
-        if not re.match(r"^\d+[smhdwDWMY]$", keep_time.strip()):
-            return {"error": "keep_time format must be a number followed by a unit: s(econds), m(inutes), h(ours), d/D(ays), W(eeks), M(onths), Y(ears) — e.g. '30D', '6M', '1Y'", "tool": "set_backup_retention"}
+        if not re.match(r"^\d+[smhHdwDWMY]$", keep_time.strip()):
+            return {"error": "keep_time format must be a number followed by a unit: s(econds), m(inutes), h/H(ours), d/D(ays), W(eeks), M(onths), Y(ears) — e.g. '30D', '6M', '1Y', '12H'", "tool": "set_backup_retention"}
     backup_id = backup_id.strip()
     retention_map = {
         "keep-versions": str(keep_versions) if keep_versions > 0 else "",
