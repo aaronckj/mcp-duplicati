@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
@@ -17,6 +18,7 @@ _DEFAULT_HOST = "http://localhost:8200"
 _DEFAULT_TIMEOUT = 30.0
 
 _session_token: str | None = None
+_session_lock = asyncio.Lock()
 
 
 def _build_proxy_body(method: str, path: str, **kwargs: Any) -> dict:
@@ -44,8 +46,7 @@ def _err(e: Exception, tool: str) -> dict:
 
 
 async def _login() -> str:
-    """Authenticate with Duplicati and cache the session token."""
-    global _session_token
+    """Authenticate with Duplicati and return a JWT access token."""
     password = os.environ.get("DUPLICATI_PASSWORD")
     if not password:
         raise ValueError("DUPLICATI_PASSWORD environment variable is required")
@@ -56,16 +57,30 @@ async def _login() -> str:
             f"{host}/api/v1/auth/login",
             json={"Password": password},
         )
+        if resp.status_code == 401:
+            raise ValueError("Duplicati authentication failed — check DUPLICATI_PASSWORD")
         resp.raise_for_status()
-        token = resp.cookies.get("session-auth")
+        data = resp.json()
+        token = data.get("AccessToken")
         if not token:
-            raise ValueError("Duplicati login response missing 'session-auth' cookie; check your password and Duplicati version")
-        _session_token = token
+            raise ValueError(
+                "Duplicati login response missing 'AccessToken'; requires Duplicati 2.0.8+ with JWT auth"
+            )
         return token
 
 
+async def _get_token() -> str:
+    """Return cached token or acquire a fresh one (thread-safe)."""
+    global _session_token
+    async with _session_lock:
+        if _session_token is None:
+            _session_token = await _login()
+        return _session_token
+
+
 async def _request(method: str, path: str, **kwargs: Any) -> httpx.Response:
-    """Route through vaultproxy if VAULT_PROXY_URL is set, else use direct session auth."""
+    """Route through vaultproxy if VAULT_PROXY_URL is set, else use direct JWT auth."""
+    global _session_token
     timeout = float(os.environ.get("DUPLICATI_TIMEOUT", str(_DEFAULT_TIMEOUT)))
     proxy_url = os.environ.get("VAULT_PROXY_URL")
 
@@ -78,23 +93,23 @@ async def _request(method: str, path: str, **kwargs: Any) -> httpx.Response:
                 headers={"X-Caller-Id": caller_id},
             )
 
-    global _session_token
     host = os.environ.get("DUPLICATI_HOST", _DEFAULT_HOST)
-    if _session_token is None:
-        await _login()
+    token = await _get_token()
     async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await client.request(
             method,
             f"{host}{path}",
-            cookies={"session-auth": _session_token},
+            headers={"Authorization": f"Bearer {token}"},
             **kwargs,
         )
         if resp.status_code == 401:
-            await _login()
+            async with _session_lock:
+                _session_token = None
+            token = await _get_token()
             resp = await client.request(
                 method,
                 f"{host}{path}",
-                cookies={"session-auth": _session_token},
+                headers={"Authorization": f"Bearer {token}"},
                 **kwargs,
             )
         return resp
@@ -382,6 +397,22 @@ async def run_backup(backup_id: str) -> dict:
         return {"result": {"backup_id": backup_id, "triggered": True}}
     except Exception as e:
         err = _err(e, "run_backup")
+        err["backup_id"] = backup_id
+        return err
+
+
+@mcp.tool()
+async def stop_backup(backup_id: str) -> dict:
+    """Gracefully stop a running backup job; it will finish the current file before stopping. Use abort_backup for an immediate halt."""
+    if not backup_id or not backup_id.strip():
+        return {"error": "backup_id must not be empty", "tool": "stop_backup"}
+    backup_id = backup_id.strip()
+    try:
+        resp = await _request("POST", f"/api/v1/backup/{backup_id}/stop")
+        resp.raise_for_status()
+        return {"result": {"backup_id": backup_id, "stop_requested": True}}
+    except Exception as e:
+        err = _err(e, "stop_backup")
         err["backup_id"] = backup_id
         return err
 
