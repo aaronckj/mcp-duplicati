@@ -9,4 +9,7 @@ COPY src/ ./src/
 
 RUN uv pip install --system .
 
+# No HEALTHCHECK: this is a stdio MCP server, not an HTTP service — there is
+# no port/endpoint to probe. Use the `health_check` MCP tool for liveness.
+
 ENTRYPOINT ["mcp-duplicati"]

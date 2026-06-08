@@ -139,7 +139,21 @@ async def list_backups() -> dict:
 
 @mcp.tool()
 async def backup_status(backup_id: str) -> dict:
-    """Get run statistics for a backup job: last run result, files examined/added/modified/deleted, source and backup size, last duration, and next scheduled run. For the full configuration (sources, filters, settings), use get_backup instead."""
+    """Get run statistics for a backup job: last run result, files examined/added/modified/deleted, source and backup size, last duration, and next scheduled run. For the full configuration (sources, filters, settings), use get_backup instead.
+    
+    Returns:
+        result: Dictionary containing:
+            - backup_id: The ID of the backup job
+            - name: Name of the backup job
+            - last_run: ISO timestamp of the last run
+            - last_result: Result of the last run (Success, Warning, Error)
+            - last_duration: Duration of the last backup in seconds
+            - source_files: Number of source files processed
+            - source_size: Size of source data in human-readable format
+            - backup_size: Size of backup data in human-readable format
+            - next_run: Scheduled next run time (if applicable)
+            - repeat: Schedule repeat interval (if applicable)
+    """
     if not backup_id or not backup_id.strip():
         return {"error": "backup_id must not be empty", "tool": "backup_status"}
     backup_id = backup_id.strip()
@@ -483,7 +497,16 @@ async def verify_backup(backup_id: str) -> dict:
 
 @mcp.tool()
 async def progress() -> dict:
-    """Get current progress of any active backup or restore operation."""
+    """Get current progress of any active backup or restore operation.
+
+    Returns the raw Duplicati progress state under "result", including:
+        - Phase: current phase (e.g. "Idle", "Backup_ProcessingFiles", "Backup_Complete")
+        - OverallProgress: fraction complete from 0.0 to 1.0
+        - ProcessedFileCount / TotalFileCount: files processed vs. total
+        - ProcessedFileSize / TotalFileSize: bytes processed vs. total
+        - BackendAction / BackendPath: current backend transfer, if any
+    Phase "Idle" means no operation is running.
+    """
     try:
         resp = await _request("GET", "/api/v1/progressstate")
         resp.raise_for_status()
@@ -582,6 +605,12 @@ async def list_tasks() -> dict:
         return {"result": resp.json()}
     except Exception as e:
         return _err(e, "list_tasks")
+
+
+@mcp.tool()
+async def health_check() -> dict:
+    """Health check endpoint for container monitoring."""
+    return {"status": "healthy", "service": "duplicati"}
 
 
 @mcp.tool()

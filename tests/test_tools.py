@@ -13,12 +13,13 @@ import pytest
 # ---------------------------------------------------------------------------
 
 async def test_login_caches_session_token(monkeypatch):
-    """_login() POSTs credentials and caches the returned session-auth cookie."""
+    """_login() POSTs credentials and returns the JWT AccessToken."""
     monkeypatch.setenv("DUPLICATI_PASSWORD", "testpass")
     monkeypatch.setenv("DUPLICATI_HOST", "http://localhost:8200")
 
     mock_resp = MagicMock()
-    mock_resp.cookies = {"session-auth": "tok123"}
+    mock_resp.status_code = 200
+    mock_resp.json = MagicMock(return_value={"AccessToken": "tok123"})
     mock_resp.raise_for_status = MagicMock()
 
     mock_client = AsyncMock()
@@ -32,7 +33,6 @@ async def test_login_caches_session_token(monkeypatch):
         token = await srv._login()
 
     assert token == "tok123"
-    assert srv._session_token == "tok123"
     mock_client.post.assert_called_once_with(
         "http://localhost:8200/api/v1/auth/login",
         json={"Password": "testpass"},
@@ -49,8 +49,9 @@ async def test_login_missing_password_raises(monkeypatch):
 
 
 async def test_request_uses_cached_token(monkeypatch):
-    """_request() sends session-auth cookie from module-level cache."""
+    """_request() sends the cached JWT as a Bearer Authorization header."""
     monkeypatch.setenv("DUPLICATI_HOST", "http://localhost:8200")
+    monkeypatch.delenv("VAULT_PROXY_URL", raising=False)
 
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -69,7 +70,7 @@ async def test_request_uses_cached_token(monkeypatch):
     mock_client.request.assert_called_once_with(
         "GET",
         "http://localhost:8200/api/v1/serverstate",
-        cookies={"session-auth": "cached_token"},
+        headers={"Authorization": "Bearer cached_token"},
     )
 
 
@@ -89,6 +90,7 @@ async def test_request_refreshes_token_on_401(monkeypatch):
     mock_client.request = AsyncMock(side_effect=[resp_401, resp_200])
 
     import mcp_duplicati.server as srv
+    monkeypatch.delenv("VAULT_PROXY_URL", raising=False)
     srv._session_token = "stale_token"
 
     async def fake_login():
@@ -103,7 +105,7 @@ async def test_request_refreshes_token_on_401(monkeypatch):
     assert mock_client.request.call_count == 2
     # Second call used the fresh token
     second_call_kwargs = mock_client.request.call_args_list[1]
-    assert second_call_kwargs[1]["cookies"] == {"session-auth": "fresh_token"}
+    assert second_call_kwargs[1]["headers"] == {"Authorization": "Bearer fresh_token"}
 
 
 # ---------------------------------------------------------------------------
@@ -204,8 +206,19 @@ async def test_list_backups_error(monkeypatch):
 
 async def test_backup_status_success(monkeypatch):
     payload = {
-        "Backup": {"ID": "1", "Name": "Home Documents", "LastBackupDate": "2024-01-01T02:00:00Z"},
-        "BackupStatistics": {"LastBackupDuration": "00:05:30", "TotalQuotaSpace": 10737418240},
+        "Backup": {
+            "ID": "1",
+            "Name": "Home Documents",
+            "Metadata": {
+                "LastBackupDate": "2024-01-01T02:00:00Z",
+                "LastBackupResult": "Success",
+                "LastBackupDuration": "00:05:30",
+                "SourceFilesCount": "1500",
+                "SourceSizeString": "5.00 GB",
+                "BackupSizeString": "2.10 GB",
+            },
+        },
+        "Schedule": {"Repeat": "1D", "Time": "2024-01-02T02:00:00Z"},
     }
 
     async def fake_request(method, path, **kw):
@@ -216,7 +229,11 @@ async def test_backup_status_success(monkeypatch):
     monkeypatch.setattr(srv, "_request", fake_request)
     result = await srv.backup_status("1")
 
-    assert result["result"]["Backup"]["ID"] == "1"
+    assert result["result"]["backup_id"] == "1"
+    assert result["result"]["name"] == "Home Documents"
+    assert result["result"]["last_result"] == "Success"
+    assert result["result"]["repeat"] == "1D"
+    assert result["result"]["next_run"] == "2024-01-02T02:00:00Z"
 
 
 async def test_backup_status_not_found(monkeypatch):
@@ -376,7 +393,8 @@ async def test_pause_indefinite(monkeypatch):
 
 async def test_pause_with_duration(monkeypatch):
     async def fake_request(method, path, **kw):
-        assert kw.get("params", {}) == {"duration": "00:05:00"}
+        assert method == "POST"
+        assert path == "/api/v1/serverstate/pause/5m"
         return make_response(200, {})
 
     import mcp_duplicati.server as srv
